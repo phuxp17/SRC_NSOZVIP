@@ -12729,11 +12729,11 @@ public class Char {
             //Admin
             case 1: {//nemu test
                 menus.clear();
-                menus.add(new Menu(CMDMenu.EXECUTE, "lên lv150", () -> {
-                    long exp = NinjaUtils.getExpFromLevel(150);
-                    exp -= this.exp;
-                    this.addExp(exp);
-                }));
+//                menus.add(new Menu(CMDMenu.EXECUTE, "lên lv150", () -> {
+//                    long exp = NinjaUtils.getExpFromLevel(150);
+//                    exp -= this.exp;
+//                    this.addExp(exp);
+//                }));
                 if (this.user.kh == 0) {
                     menus.add(new Menu(CMDMenu.EXECUTE, "Kích Hoạt tài khoản", () -> {
                         if (!isHuman) {
