@@ -8,7 +8,7 @@ COPY src src
 
 RUN sed -i 's/\r$//' mvnw \
     && chmod +x mvnw \
-    && ./mvnw -q -DskipTests package
+    && MAVEN_CONFIG='' ./mvnw -q -DskipTests package
 
 FROM eclipse-temurin:21-jre-jammy
 
