@@ -65,11 +65,11 @@ public class NpcAdmin {
         if (serverConfig.isTestVersion()) {
             p.menus.add(new Menu(CMDMenu.EXECUTE, "Chức Năng test", () -> {
                 p.menus.clear();
-                p.menus.add(new Menu(CMDMenu.EXECUTE, "lên lv150", () -> {
-                    long exp = NinjaUtils.getExpFromLevel(150);
-                    exp -= p.exp;
-                    p.addExp(exp);
-                }));
+//                p.menus.add(new Menu(CMDMenu.EXECUTE, "lên lv150", () -> {
+//                    long exp = NinjaUtils.getExpFromLevel(150);
+//                    exp -= p.exp;
+//                    p.addExp(exp);
+//                }));
                          if (p.user.kh == 0) {
                     p.menus.add(new Menu(CMDMenu.EXECUTE, "Kích Hoạt tài khoản", () -> {
                         if (!p.isHuman) {
