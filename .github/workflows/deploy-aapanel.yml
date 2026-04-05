@@ -3,6 +3,7 @@ name: Deploy aaPanel
 on:
   push:
     branches:
+      - master
       - main
   workflow_dispatch:
 
