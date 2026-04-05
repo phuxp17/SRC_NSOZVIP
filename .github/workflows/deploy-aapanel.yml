@@ -1,0 +1,27 @@
+name: Deploy aaPanel
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Ensure deploy script is executable
+        run: chmod +x scripts/deploy-aapanel.sh
+
+      - name: Deploy with Docker Compose
+        env:
+          DEPLOY_PATH: ${{ vars.AAPANEL_DEPLOY_PATH }}
+          COMPOSE_FILE: docker-compose.aapanel.yml
+          ENV_FILE: .env.aapanel
+        run: ./scripts/deploy-aapanel.sh

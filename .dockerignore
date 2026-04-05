@@ -1,0 +1,8 @@
+.idea
+.mvn/wrapper/apache-maven-*.zip
+target
+logs
+Data
+app.jar
+Nso.jar
+*.iml
