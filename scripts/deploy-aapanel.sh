@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-DEPLOY_PATH="${DEPLOY_PATH:-/www/wwwroot/nso-server}"
+DEPLOY_PATH="${DEPLOY_PATH:-/www/nso}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.aapanel.yml}"
 ENV_FILE="${ENV_FILE:-.env.aapanel}"
 
