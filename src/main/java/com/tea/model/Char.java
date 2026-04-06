@@ -12901,6 +12901,9 @@ public class Char {
                     }
                     return;
                 }));
+                menus.add(new Menu(CMDMenu.EXECUTE, "Mở 120 ô Hành Trang (5k lượng)", () -> {
+                    expandBagTo120ByLuong(5000, NpcName.ADMIN);
+                }));
                 menus.add(new Menu(CMDMenu.EXECUTE, "Lấy Mã chuyển sim để đổi sdt trên web", () -> {
                     if (!isHuman) {
                         warningClone();
