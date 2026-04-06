@@ -69,8 +69,12 @@ public class SumMer extends Event {
                     Config.getInstance().getEventSecond());
         itemsThrownFromMonsters.add(5, ItemName.TRE);
         itemsThrownFromMonsters.add(5, ItemName.DAY);
-        itemsThrownFromMonsters.add(2, ItemName.GIAY2);
-        itemsThrownFromMonsters.add(2, ItemName.VAI);
+        itemsThrownFromMonsters.add(5, ItemName.GIAY2);
+        itemsThrownFromMonsters.add(5, ItemName.VAI);
+        itemsThrownFromMonsters.add(5, ItemName.KEM_DAU);
+        itemsThrownFromMonsters.add(5, ItemName.KEM_CHOCOLATE);
+        itemsThrownFromMonsters.add(5, ItemName.KEM_OC_QUE);
+        itemsThrownFromMonsters.add(5, ItemName.KEM_SUA);
         keyEventPoint.add(EventPoint.DIEM_TIEU_XAI);
         keyEventPoint.add(TOP_LUCKY_CHARM);
         keyEventPoint.add(TOP_MAKE_VAI_CAKE);
@@ -273,7 +277,7 @@ public class SumMer extends Event {
 
         p.menus.add(new Menu(CMDMenu.EXECUTE, "Đua TOP", () -> {
             p.menus.clear();
-            /*p.menus.add(new Menu(CMDMenu.EXECUTE, "Cho bé ăn", () -> {
+            p.menus.add(new Menu(CMDMenu.EXECUTE, "Cho bé ăn", () -> {
                 p.menus.clear();
                 p.menus.add(new Menu(CMDMenu.EXECUTE, "Bảng xếp hạng", () -> {
                     viewTop(p, TOP_LUCKY_CHARM, "Cho bé ăn", "%d. %s đã cho ăn %s lần");
@@ -309,7 +313,7 @@ public class SumMer extends Event {
                     }
                 }
                 p.getService().openUIMenu();
-            }));*/
+            }));
             p.menus.add(new Menu(CMDMenu.EXECUTE, "Thợ thả Diều", () -> {
                 p.menus.clear();
                 p.menus.add(new Menu(CMDMenu.EXECUTE, "Bảng xếp hạng", () -> {
@@ -352,10 +356,10 @@ public class SumMer extends Event {
         }));
         p.menus.add(new Menu(CMDMenu.EXECUTE, "Hướng dẫn", () -> {
             StringBuilder sb = new StringBuilder();
-            /*sb.append("- Số lần cho bé ăn: ")
+            sb.append("- Số lần cho bé ăn: ")
                     .append(NinjaUtils.getCurrency(p.getEventPoint().getPoint(TOP_LUCKY_CHARM))).append("\n");
-           */
-              sb.append("- Số diều đã ăn: ")
+
+            sb.append("- Số diều đã thả: ")
                     .append(NinjaUtils.getCurrency(p.getEventPoint().getPoint(TOP_MAKE_VAI_CAKE))).append("\n");
             sb.append("===CÔNG THỨC===").append("\n");
             sb.append("- Diều Vải: 3 Tre + 3 Dây + 3 Vải + 1 Màu vẽ cao cấp = 1 Diều Vải.").append("\n");
