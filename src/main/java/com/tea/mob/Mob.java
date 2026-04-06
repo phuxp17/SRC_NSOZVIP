@@ -41,6 +41,9 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class Mob {
+    private static final int FARM_BALANCE_REWARD = 20;
+    private static final int FARM_BALANCE_DROP_RATE = 20;
+
     public static final byte YEN = 0;
     public static final byte ITEM = 1;
     public static final byte ITEM_TASK = 2;
@@ -875,6 +878,9 @@ public class Mob {
                         }
                     }
                 }
+            }
+            if (this.template.id != MobName.BU_NHIN && NinjaUtils.nextInt(100) < FARM_BALANCE_DROP_RATE) {
+                killer.addBalanceFromMobKill(FARM_BALANCE_REWARD);
             }
             if (this.template.id == MobName.NGUOI_TUYET) {
                 if (killer.clan != null) {

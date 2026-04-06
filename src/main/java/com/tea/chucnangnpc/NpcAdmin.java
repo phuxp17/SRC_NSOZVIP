@@ -187,7 +187,7 @@ public class NpcAdmin {
                     p.warningClone();
                     return;
                 }
-                if (p.numberCellBox != 30) {
+                if (p.numberCellBox == 120) {
                     p.serverDialog("Không thể mở nữa!");
                     return;
                 }
@@ -199,7 +199,7 @@ public class NpcAdmin {
                         box[num14] = p.box[num14];
                     }
                     p.box = box;
-                    p.getService().npcChat(NpcName.VUA_HUNG, "Ta đã Nâng rương đồ giúp con rồi đó con sẽ bị thoát sau 3s để lưu !");
+                    p.getService().npcChat(NpcName.ADMIN, "Ta đã Nâng rương đồ giúp con rồi đó con sẽ bị thoát sau 3s để lưu !");
                     p.getService().updateInfoMe();
                     Thread disconnectThread = new Thread(() -> {
                         try {

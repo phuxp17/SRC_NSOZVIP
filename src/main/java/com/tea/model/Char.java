@@ -24167,6 +24167,33 @@ public class Char {
         }
     }
 
+    public synchronized void addBalanceFromMobKill(int amount) {
+        if (amount <= 0 || this.user == null) {
+            return;
+        }
+        try (Connection userConn = DbManager.getInstance().getConnection(DbManager.GAME);
+                Connection playerConn = DbManager.getInstance().getConnection(DbManager.SAVE_DATA);
+                PreparedStatement updateUserStmt = userConn.prepareStatement(
+                        "UPDATE `users` SET `balance` = `balance` + ?, `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;");
+                PreparedStatement updatePlayerStmt = playerConn.prepareStatement(
+                        "UPDATE `players` SET `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;")) {
+            updateUserStmt.setInt(1, amount);
+            updateUserStmt.setInt(2, amount);
+            updateUserStmt.setInt(3, this.user.id);
+            int updatedUsers = updateUserStmt.executeUpdate();
+            if (updatedUsers <= 0) {
+                return;
+            }
+            updatePlayerStmt.setInt(1, amount);
+            updatePlayerStmt.setInt(2, this.id);
+            updatePlayerStmt.executeUpdate();
+            this.tongnap += amount;
+            serverMessage("Bạn nhận được " + NinjaUtils.getCurrency(amount) + " COIN từ quái.");
+        } catch (SQLException e) {
+            Log.error("addBalanceFromMobKill err", e);
+        }
+    }
+
     public void open1(Char p) {
         p.setInput(new InputDialog(CMDInputDialog.EXECUTE, "a tênnv id sl ví dụ : a admin 454 10", () -> {
             String text1 = p.getInput().getText();
