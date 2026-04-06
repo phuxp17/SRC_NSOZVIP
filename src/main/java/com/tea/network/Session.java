@@ -430,8 +430,8 @@ public class Session implements ISession {
                     }
                     if (user.sltChar != null) {
                         try {
-                            user.sltChar.close();
                             user.sltChar.saveData();
+                            user.sltChar.close();
                         } catch (Exception e) {
                             Log.error("save player: " + user.sltChar.name + " - err: " + e.getMessage(), e);
                         } finally {

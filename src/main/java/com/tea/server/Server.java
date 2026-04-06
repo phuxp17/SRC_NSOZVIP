@@ -1842,15 +1842,33 @@ public class Server {
             return;
         }
         Log.info("Graceful shutdown requested: " + reason);
+        start = false;
         NinjaSchool.isStop = true;
-        if (start) {
-            saveAll();
+        Log.info("Graceful shutdown online snapshot: chars=" + ServerManager.getChars().size()
+                + ", users=" + ServerManager.getUsers().size());
+        saveAll();
+        List<User> users = ServerManager.getUsers();
+        for (User user : users) {
             try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                if (user != null && !user.isCleaned) {
+                    if (user.sltChar != null && !user.sltChar.isCleaned) {
+                        user.sltChar.saveData();
+                    }
+                    user.saveData();
+                }
+            } catch (Exception e) {
+                Log.error("graceful shutdown save user error: " + e.getMessage(), e);
             }
+        }
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        try {
             stop();
+        } catch (Exception e) {
+            Log.error("graceful shutdown stop error: " + e.getMessage(), e);
         }
         Log.info("Graceful shutdown completed.");
     }
