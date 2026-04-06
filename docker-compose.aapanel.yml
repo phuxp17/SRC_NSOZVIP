@@ -20,6 +20,7 @@ services:
       dockerfile: Dockerfile
     container_name: nso-app
     restart: unless-stopped
+    stop_grace_period: 2m
     depends_on:
       mongo:
         condition: service_started

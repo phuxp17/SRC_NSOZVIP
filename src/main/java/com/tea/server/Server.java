@@ -83,6 +83,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Calendar;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -118,6 +119,8 @@ public class Server {
     public static long EXP_MAX = 0;
     public static final ImageMap[][] IMAGE_MAP_ARR = new ImageMap[3][4];
     public static boolean isStop;
+    private static final AtomicBoolean SHUTDOWN_IN_PROGRESS = new AtomicBoolean(false);
+    private static final AtomicBoolean SHUTDOWN_HOOK_REGISTERED = new AtomicBoolean(false);
     private static final String COMMAND_STATE_FILE = "command_state.txt";
 
     public static void initImageMap() {
@@ -1690,6 +1693,7 @@ public class Server {
 
     public static void start() {
         try {
+            registerShutdownHook();
             setOffline();
             LuckyDrawManager.getInstance().add(new LuckyDraw("Vòng xoay thường", LuckyDrawManager.NORMAL));
             LuckyDrawManager.getInstance().add(new LuckyDraw("Vòng xoay vip", LuckyDrawManager.VIP));
@@ -1803,6 +1807,7 @@ public class Server {
     }
 
     public static void stop() {
+        start = false;
         isStop = true;
         GameData.getInstance().close();
         StallManager.getInstance().stop();
@@ -1822,6 +1827,32 @@ public class Server {
             e.printStackTrace();
         }
         close();
+    }
+
+    private static void registerShutdownHook() {
+        if (!SHUTDOWN_HOOK_REGISTERED.compareAndSet(false, true)) {
+            return;
+        }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> gracefulShutdown("JVM shutdown hook"),
+                "nso-graceful-shutdown"));
+    }
+
+    public static void gracefulShutdown(String reason) {
+        if (!SHUTDOWN_IN_PROGRESS.compareAndSet(false, true)) {
+            return;
+        }
+        Log.info("Graceful shutdown requested: " + reason);
+        NinjaSchool.isStop = true;
+        if (start) {
+            saveAll();
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            stop();
+        }
+        Log.info("Graceful shutdown completed.");
     }
 
     public static void maintance() {
@@ -1851,7 +1882,7 @@ public class Server {
             Log.info("Hệ thống Đóng sau 1 phút.");
             Thread.sleep(60000);
             Log.info("Hệ thống Bắt đầu đóng máy chủ.");
-            Server.stop();
+            Server.gracefulShutdown("maintenance");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -2050,7 +2081,9 @@ public class Server {
                     user.session.closeMessage();
                 }
             }
-            server.close();
+            if (server != null && !server.isClosed()) {
+                server.close();
+            }
             server = null;
             if (ServerManager.getUsers().isEmpty()) {
 

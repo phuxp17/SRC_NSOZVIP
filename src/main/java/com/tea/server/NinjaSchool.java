@@ -201,13 +201,7 @@ public class NinjaSchool extends WindowAdapter implements ActionListener {
         frame.dispose();
         if (Server.start) {
             Log.info("Stopping server.");
-            Server.saveAll();
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException ex) {
-                throw new RuntimeException(ex);
-            }
-            Server.stop();
+            Server.gracefulShutdown("manager window closing");
             System.exit(0);
         }
     }
