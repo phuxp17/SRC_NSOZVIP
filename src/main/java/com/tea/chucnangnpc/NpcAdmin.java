@@ -215,6 +215,9 @@ public class NpcAdmin {
                 }
                 return;
             }));
+            p.menus.add(new Menu(CMDMenu.EXECUTE, "Mở 120 ô Hành Trang (5k lượng)", () -> {
+                p.expandBagTo120ByLuong(5000, NpcName.ADMIN);
+            }));
             p.menus.add(new Menu(CMDMenu.EXECUTE, "Lấy Mã chuyển sim để đổi sdt trên web", () -> {
                 if (!p.isHuman) {
                     p.warningClone();

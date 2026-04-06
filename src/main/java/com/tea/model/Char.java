@@ -6057,6 +6057,10 @@ public class Char {
                 return;
             }
             text = text.replace("\n", " ");
+            if (text.equalsIgnoreCase("dn")) {
+                viewBalanceAndTongnap(this);
+                return;
+            }
             if (AdminService.getInstance().process(this, text)) {
                 return;
             }
@@ -8128,6 +8132,39 @@ public class Char {
         } else {
             serverMessage("Bạn đã sử dụng tất cả các loại túi vải.");
         }
+    }
+
+    public void expandBagTo120ByLuong(int costLuong, int npcId) {
+        if (!isHuman) {
+            warningClone();
+            return;
+        }
+        if (this.numberCellBag >= 120) {
+            serverDialog("Không thể mở nữa!");
+            return;
+        }
+        if (this.user.gold < costLuong) {
+            serverDialog("Không đủ lượng!");
+            return;
+        }
+        addLuong(-costLuong);
+        this.numberCellBag = 120;
+        Item[] newBag = new Item[this.numberCellBag];
+        for (int i = 0; i < this.bag.length; i++) {
+            newBag[i] = this.bag[i];
+        }
+        this.bag = newBag;
+        getService().npcChat(npcId, "Ta đã nâng hành trang đồ giúp con rồi đó con sẽ bị thoát sau 3s để lưu !");
+        getService().updateInfoMe();
+        Thread disconnectThread = new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                user.session.disconnect();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        disconnectThread.start();
     }
 
     public void startDie() {
@@ -24156,6 +24193,29 @@ public class Char {
                 int diamond = result.getInt("balance");
                 String formattedDiamond = formatNumberWithCommas(diamond);
                 p.serverDialog("Bạn đang có " + formattedDiamond + " COIN");
+            } else {
+                p.serverDialog("Không tìm thấy thông tin người dùng.");
+            }
+            result.close();
+            stmt.close();
+            conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void viewBalanceAndTongnap(Char p) {
+        try {
+            Connection conn = DbManager.getInstance().getConnection(DbManager.GAME);
+            PreparedStatement stmt = conn.prepareStatement("SELECT `balance`, `tongnap` FROM `users` WHERE `id` = ? LIMIT 1;");
+            stmt.setInt(1, p.user.id);
+            ResultSet result = stmt.executeQuery();
+            if (result.next()) {
+                int balance = result.getInt("balance");
+                int tongnap = result.getInt("tongnap");
+                String formattedBalance = formatNumberWithCommas(balance);
+                String formattedTongnap = formatNumberWithCommas(tongnap);
+                p.serverDialog("Số dư VND: " + formattedBalance + "\nTổng nạp: " + formattedTongnap);
             } else {
                 p.serverDialog("Không tìm thấy thông tin người dùng.");
             }
