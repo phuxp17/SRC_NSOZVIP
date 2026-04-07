@@ -23935,14 +23935,23 @@ public class Char {
 
     public void showServerInfo1(Char p) {
         StringBuilder sb = new StringBuilder();
-        sb.append("- Số người đang online: ").append(ServerManager.getNumberOnline1()).append("\n");
         List<Char> onlineUsers = ServerManager.getChars();
+        ArrayList<String> visibleNames = new ArrayList<>();
+
         if (onlineUsers != null) {
-            sb.append("- Danh sách người chơi online: \n");
             for (Char userChar : onlineUsers) {
-                if (userChar != null && !userChar.isCleaned) {
-                    sb.append(userChar.setNameVip(name)).append("\n");
+                if (userChar != null && !userChar.isCleaned && !userChar.isNhanBan && !userChar.isPet
+                        && userChar.name != null && !userChar.name.isEmpty()) {
+                    visibleNames.add(Char.setNameVip(userChar.name));
                 }
+            }
+        }
+
+        sb.append("- Số người đang online: ").append(visibleNames.size()).append("\n");
+        if (!visibleNames.isEmpty()) {
+            sb.append("- Danh sách người chơi online: \n");
+            for (String visibleName : visibleNames) {
+                sb.append(visibleName).append("\n");
             }
         }
 

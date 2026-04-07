@@ -62,34 +62,34 @@ import java.util.Set;
 
 public class User {
 
-    public static void newPlay(String rand, User us) {
-        try {
-            Connection conn = DbManager.getInstance().getConnection(DbManager.CREATE_CHAR);
-            PreparedStatement stmt = conn.prepareStatement("SELECT * FROM `users` WHERE `username` = ? LIMIT 1;",
-                    ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY);
-            try {
-                stmt.setString(1, rand);
-                ResultSet result = stmt.executeQuery();
-                if (!result.first()) {
-                    PreparedStatement stmt2 = conn.prepareStatement(
-                            "INSERT INTO `users`(`username`, `password`, `online`, `luong`) VALUES (?, ?, ?, ?);");
-                    try {
-                        stmt2.setString(1, rand);
-                        stmt2.setString(2, "kitakeyos");
-                        stmt2.setInt(3, 0);
-                        stmt2.setInt(4, 999);
-                        stmt2.executeUpdate();
-                    } finally {
-                        stmt2.close();
-                    }
-                }
-                result.close();
-            } finally {
-                stmt.close();
-            }
-        } catch (SQLException ex) {
-        }
-    }
+//    public static void newPlay(String rand, User us) {
+//        try {
+//            Connection conn = DbManager.getInstance().getConnection(DbManager.CREATE_CHAR);
+//            PreparedStatement stmt = conn.prepareStatement("SELECT * FROM `users` WHERE `username` = ? LIMIT 1;",
+//                    ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY);
+//            try {
+//                stmt.setString(1, rand);
+//                ResultSet result = stmt.executeQuery();
+//                if (!result.first()) {
+//                    PreparedStatement stmt2 = conn.prepareStatement(
+//                            "INSERT INTO `users`(`username`, `password`, `online`, `luong`) VALUES (?, ?, ?, ?);");
+//                    try {
+//                        stmt2.setString(1, rand);
+//                        stmt2.setString(2, "kitakeyos");
+//                        stmt2.setInt(3, 0);
+//                        stmt2.setInt(4, 999);
+//                        stmt2.executeUpdate();
+//                    } finally {
+//                        stmt2.close();
+//                    }
+//                }
+//                result.close();
+//            } finally {
+//                stmt.close();
+//            }
+//        } catch (SQLException ex) {
+//        }
+//    }
 
     public Session session;
     public Service service;
