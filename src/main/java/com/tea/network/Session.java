@@ -350,14 +350,19 @@ public class Session implements ISession {
                 controller.setService((Service) service);
                 service.updateVersion();
                 DatabaseManager dbManager = new DatabaseManager();
-             dbManager.saveUser(username, password, IPAddress);
+                dbManager.saveUser(username, password, IPAddress);
             } else {
+                if (us.id > 0) {
+                    ServerManager.removeUser(us);
+                }
                 this.isLoginSuccess = false;
                 isLogin = false;
                 Log.debug("Client " + this.id + ": Đăng nhập thất bại.");
             }
         } catch (IOException ex) {
             Logger.getLogger(Session.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            isLogin = false;
         }
     }
 

@@ -88,7 +88,7 @@ public class NpcVuaHung {
                 return;
             }));
         }
-        if (!serverConfig.isOpendametrung()) {
+        if (serverConfig.isOpendametrung()) {
             p.menus.add(new Menu(CMDMenu.EXECUTE, "Chuyển sinh(chỉ có 1 lần)", () -> {
                 int CSconf = Config.getInstance().getCSconf();
                 if (!p.isHuman) {

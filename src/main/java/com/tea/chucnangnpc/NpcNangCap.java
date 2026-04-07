@@ -42,7 +42,7 @@ public class NpcNangCap {
             nangruby(p);
         }));
 
-        if (!serverConfig.isOpendametrung()) {
+        if (serverConfig.isOpendametrung()) {
             p.menus.add(new Menu(CMDMenu.EXECUTE, "Nâng Pet", () -> {
                 nangpet(p);
             }));

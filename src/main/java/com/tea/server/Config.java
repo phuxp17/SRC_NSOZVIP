@@ -200,11 +200,11 @@ public class Config {
             }else{
                 vxmm = false;
             }
-            if (props.containsKey("open.dametrung")) {
-                dametrung = Boolean.parseBoolean(props.getProperty("open.dametrung"));
-            }else{
-                dametrung = false;
+            String dameTrungValue = resolveString(props, "game.dameTrung", "NSO_GAME_DAMETRUNG", "");
+            if (StringUtils.isNullOrEmpty(dameTrungValue)) {
+                dameTrungValue = resolveString(props, "open.dametrung", "NSO_OPEN_DAMETRUNG", "false");
             }
+            dametrung = Boolean.parseBoolean(dameTrungValue.trim());
             if (props.containsKey("open.doiluong")) {
                 doiluong = Boolean.parseBoolean(props.getProperty("open.doiluong"));
             }else{
@@ -358,6 +358,9 @@ public class Config {
         Log.info(String.format(
                 "Config loaded: serverId=%d, port=%d, uiEnabled=%s, serverInfoEnabled=%s, websocketEnabled=%s",
                 serverID, port, uiEnabled, serverInfoEnabled, websocketEnabled));
+        Log.info(String.format(
+                "Feature toggles: open.dametrung=%s, open.vxmm=%s, open.map=%s, open.doiluong=%s",
+                dametrung, vxmm, map, doiluong));
         Log.info(String.format("Resources dir=%s, MySQL=%s:%d/%s, MongoDB=%s:%d/%s",
                 serverDir, dbHost, dbPort, dbName, mongodbHost, mongodbPort, mongodbName));
     }

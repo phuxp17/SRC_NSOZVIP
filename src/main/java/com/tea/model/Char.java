@@ -14991,7 +14991,7 @@ public class Char {
             getService().openUIMenu();
             return;
         }));
-        if (!serverConfig.isOpendametrung()) {
+        if (serverConfig.isOpendametrung()) {
             menus.add(new Menu(CMDMenu.EXECUTE, "Nâng Trang Bị Shop", () -> {
                 if (this.user.kh == 0) {
                     serverMessage("Bạn phải kích hoạt để dùng tính năng này");
@@ -19108,7 +19108,7 @@ public class Char {
         menus.add(new Menu(CMDMenu.EXECUTE, "Làng Oshin", () -> {
             teleport(48);
         }));
-        if (!serverConfig.isOpendametrung()) {
+        if (serverConfig.isOpendametrung()) {
             menus.add(new Menu(CMDMenu.EXECUTE, "Làng Rèn", () -> {
                 teleport(197);
             }));
@@ -24270,7 +24270,11 @@ public class Char {
                 if (amount <= 0) {
                     return;
                 }
-                if (!applyBalanceFromMobKillToDb(amount)) {
+                int userId = this.user != null ? this.user.id : -1;
+                if (userId <= 0) {
+                    return;
+                }
+                if (!applyBalanceFromMobKillToDb(amount, userId, this.id)) {
                     pendingBalanceFromMobKill.addAndGet(amount);
                     shouldRetryWithBackoff = true;
                     return;
@@ -24297,22 +24301,34 @@ public class Char {
         }
     }
 
-    private boolean applyBalanceFromMobKillToDb(int amount) {
-        try (Connection userConn = DbManager.getInstance().getConnection();
-                Connection playerConn = DbManager.getInstance().getConnection();
-                PreparedStatement updateUserStmt = userConn.prepareStatement(SQL_UPDATE_MOB_KILL_USER_BALANCE);
-                PreparedStatement updatePlayerStmt = playerConn.prepareStatement(SQL_UPDATE_MOB_KILL_PLAYER_TONGNAP)) {
-            updateUserStmt.setInt(1, amount);
-            updateUserStmt.setInt(2, amount);
-            updateUserStmt.setInt(3, this.user.id);
-            int updatedUsers = updateUserStmt.executeUpdate();
-            if (updatedUsers <= 0) {
+    private boolean applyBalanceFromMobKillToDb(int amount, int userId, int playerId) {
+        try (Connection conn = DbManager.getInstance().getConnection();
+                PreparedStatement updateUserStmt = conn.prepareStatement(SQL_UPDATE_MOB_KILL_USER_BALANCE);
+                PreparedStatement updatePlayerStmt = conn.prepareStatement(SQL_UPDATE_MOB_KILL_PLAYER_TONGNAP)) {
+            boolean originalAutoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try {
+                updateUserStmt.setInt(1, amount);
+                updateUserStmt.setInt(2, amount);
+                updateUserStmt.setInt(3, userId);
+                int updatedUsers = updateUserStmt.executeUpdate();
+                if (updatedUsers > 0) {
+                    updatePlayerStmt.setInt(1, amount);
+                    updatePlayerStmt.setInt(2, playerId);
+                    updatePlayerStmt.executeUpdate();
+                }
+                conn.commit();
                 return true;
+            } catch (SQLException e) {
+                try {
+                    conn.rollback();
+                } catch (SQLException rollbackEx) {
+                    Log.error("addBalanceFromMobKill rollback err", rollbackEx);
+                }
+                throw e;
+            } finally {
+                conn.setAutoCommit(originalAutoCommit);
             }
-            updatePlayerStmt.setInt(1, amount);
-            updatePlayerStmt.setInt(2, this.id);
-            updatePlayerStmt.executeUpdate();
-            return true;
         } catch (SQLException e) {
             Log.error("addBalanceFromMobKill err", e);
             return false;

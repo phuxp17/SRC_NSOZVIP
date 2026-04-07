@@ -371,7 +371,8 @@ public class Controller implements IMessageHandler {
                         break;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.error("Controller.onMessage err (clientId=" + client.id + ", cmd=" + mss.getCommand() + ")", e);
+                client.disconnect();
             }
         }
     }

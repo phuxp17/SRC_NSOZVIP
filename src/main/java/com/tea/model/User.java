@@ -383,22 +383,26 @@ public class User {
             }
             User u = ServerManager.findUserByUsername(this.username);
             if (u != null) {
-                service.serverDialog("Tài khoản đã có người đăng nhập.");
-                if (u.session != null && u.session.getService() != null) {
-                    u.session.getService().serverDialog("Có người đăng nhập vào tài khoản của bạn.");
+                Session oldSession = u.session;
+                boolean isStaleSession = u.isCleaned || oldSession == null || oldSession.isClosed || !oldSession.isConnected();
+                if (isStaleSession) {
+                    ServerManager.removeUser(u);
+                } else {
+                    service.serverDialog("Tài khoản đã có người đăng nhập.");
+                    if (oldSession.getService() != null) {
+                        oldSession.getService().serverDialog("Có người đăng nhập vào tài khoản của bạn.");
+                    }
+                    oldSession.disconnect();
+                    return;
                 }
-                if (!u.isCleaned) {
-                    u.session.disconnect();
-                }
-                return;
             }
-            ServerManager.addUser(this);
             boolean isOnline = ((byte) map.get("online")) == 1;
             if (isOnline) {
                 service.serverDialog("Tài khoản đang có người đăng nhập (2)");
                 forceOutOtherServer();
                 return;
             }
+            ServerManager.addUser(this);
             this.isLoadFinish = true;
         } catch (Exception ex) {
             Log.error("login err", ex);
