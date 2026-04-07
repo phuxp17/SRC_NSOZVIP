@@ -14768,7 +14768,7 @@ public class Char {
         menus.add(new Menu(CMDMenu.EXECUTE, "Quà Nạp Lần Đầu", () -> {
             menus.clear();
             menus.add(new Menu(CMDMenu.EXECUTE, "Nhận Quà (trên 50k)", () -> {
-                if (tongNaps < 100000) {
+                if (tongNaps < 50000) {
                     serverDialog("Tối Thiểu Nạp 50k");
                     return;
                 }
@@ -24521,9 +24521,9 @@ public class Char {
             } else if (balanceResult.next()) {
                 int tongnap = balanceResult.getInt("tongnap");
                 int nhanmocnap = balanceResult.getInt("nhanmocnap");
-                if (tongnap >= 100000) {
+                if (tongnap >= 200000) {
                     if (nhanmocnap != 0) {
-                        p.serverDialog("Không nhận được. Hãy nhận từ thấp đến cao.");
+                        p.serverDialog("Nhận rồi thì biến.");
                     } else {
                         addYen(300000000);
                         writer.write("Người dùng ID :" + "[" + p.user.id + "]" + " đã nhập thành công một mục phẩm.");
@@ -24600,7 +24600,7 @@ public class Char {
                     if (getSlotNull() == 0) {
                         p.serverDialog("Hãy chừa 1 ô trống trong hành trang để nhận đồ.");
                     } else if (nhanmocnap != 1) {
-                        p.serverDialog("Không nhận được. Hãy nhận từ thấp đến cao.");
+                        p.serverDialog("Nhận rồi thì biến.");
                     } else {
                         Item unglong = ItemFactory.getInstance().newItem(ItemName.PET_UNG_LONG);
                         unglong.options.add(new ItemOption(73, 2000));
@@ -24683,7 +24683,7 @@ public class Char {
                     if (getSlotNull() == 0) {
                         p.serverDialog("Hãy chừa 1 ô trống trong hành trang để nhận đồ.");
                     } else if (nhanmocnap != 2) {
-                        p.serverDialog("Không nhận được. Hãy nhận từ thấp đến cao.");
+                        p.serverDialog("Nhận rồi thì biến.");
                     } else {
                         addYen(500000000);
                         addLuong(50000);
@@ -24768,7 +24768,7 @@ public class Char {
                 int nhanmocnap = balanceResult.getInt("nhanmocnap");
                 if (tongnap >= 2000000) {
                     if (nhanmocnap != 3) {
-                        p.serverDialog("Không nhận được. Hãy nhận từ thấp đến cao.");
+                        p.serverDialog("Nhận rồi thì biến.");
                     } else {
                         addLuong(150000);
                         addYen(700000000);
@@ -24847,7 +24847,7 @@ public class Char {
                     if (getSlotNull() == 0) {
                         p.serverDialog("Hãy chừa 1 ô trống trong hành trang để nhận đồ.");
                     } else if (nhanmocnap != 4) {
-                        p.serverDialog("Không nhận được. Hãy nhận từ thấp đến cao.");
+                        p.serverDialog("Nhận rồi thì biến.");
                     } else {
                         Item tree = ItemFactory.getInstance().newItem(385);
                         tree.setQuantity(1);
@@ -24945,7 +24945,7 @@ public class Char {
                     if (getSlotNull() <= 5) {
                         p.serverDialog("Hãy chừa 5 ô trống trong hành trang để nhận đồ.");
                     } else if (nhanmocnap != 5) {
-                        p.serverDialog("Không nhận được. Hãy nhận từ thấp đến cao.");
+                        p.serverDialog("Nhận rồi thì biến.");
                     } else {
                         Item tree = ItemFactory.getInstance().newItem(540);
                         tree.setQuantity(1);
