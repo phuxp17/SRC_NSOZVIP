@@ -151,6 +151,8 @@ import java.util.Random;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -208,6 +210,11 @@ public class Char {
         "Nhặt v.phẩm hữu ích", "Nhặt theo danh sách"};
 
     public static ExecutorService threadPool = Executors.newFixedThreadPool(500);
+    private static final long MOB_KILL_BALANCE_RETRY_DELAY_MS = 500L;
+    private static final String SQL_UPDATE_MOB_KILL_USER_BALANCE =
+            "UPDATE `users` SET `balance` = `balance` + ?, `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;";
+    private static final String SQL_UPDATE_MOB_KILL_PLAYER_TONGNAP =
+            "UPDATE `players` SET `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;";
 
     public static Char findCharByName(String name_input) {
         String name = getRealName(name_input);
@@ -257,6 +264,8 @@ public class Char {
             pointGiay, pointPhu, pointTinhTu, countFinishDay, countLoopBoss, limitTiemNangSo, limitKyNangSo,
             limitPhongLoi, limitBangHoa, countPB, pointPB, countUseItemGlory, countUseItemDungeo, countUseItemBeast,
             countGlory, countArenaT, tongnap;
+    private final AtomicInteger pendingBalanceFromMobKill = new AtomicInteger(0);
+    private final AtomicBoolean balanceFromMobKillFlushScheduled = new AtomicBoolean(false);
     public byte speed;
     public byte numberCellBag, numberCellBox;
     public Zone zone;
@@ -24230,30 +24239,74 @@ public class Char {
         }
     }
 
-    public synchronized void addBalanceFromMobKill(int amount) {
+    public void addBalanceFromMobKill(int amount) {
         if (amount <= 0 || this.user == null) {
             return;
         }
-        try (Connection userConn = DbManager.getInstance().getConnection(DbManager.GAME);
-                Connection playerConn = DbManager.getInstance().getConnection(DbManager.SAVE_DATA);
-                PreparedStatement updateUserStmt = userConn.prepareStatement(
-                        "UPDATE `users` SET `balance` = `balance` + ?, `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;");
-                PreparedStatement updatePlayerStmt = playerConn.prepareStatement(
-                        "UPDATE `players` SET `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;")) {
+        pendingBalanceFromMobKill.addAndGet(amount);
+        scheduleFlushBalanceFromMobKill();
+    }
+
+    private void scheduleFlushBalanceFromMobKill() {
+        if (balanceFromMobKillFlushScheduled.compareAndSet(false, true)) {
+            threadPool.submit(this::flushBalanceFromMobKill);
+        }
+    }
+
+    private void flushBalanceFromMobKill() {
+        boolean shouldRetryWithBackoff = false;
+        try {
+            while (true) {
+                int amount = pendingBalanceFromMobKill.getAndSet(0);
+                if (amount <= 0) {
+                    return;
+                }
+                if (!applyBalanceFromMobKillToDb(amount)) {
+                    pendingBalanceFromMobKill.addAndGet(amount);
+                    shouldRetryWithBackoff = true;
+                    return;
+                }
+                this.tongnap += amount;
+                serverMessage("Bạn nhận được " + NinjaUtils.getCurrency(amount) + " COIN từ quái.");
+            }
+        } finally {
+            balanceFromMobKillFlushScheduled.set(false);
+            if (pendingBalanceFromMobKill.get() > 0) {
+                if (shouldRetryWithBackoff) {
+                    threadPool.submit(() -> {
+                        try {
+                            Thread.sleep(MOB_KILL_BALANCE_RETRY_DELAY_MS);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                        }
+                        scheduleFlushBalanceFromMobKill();
+                    });
+                } else {
+                    scheduleFlushBalanceFromMobKill();
+                }
+            }
+        }
+    }
+
+    private boolean applyBalanceFromMobKillToDb(int amount) {
+        try (Connection userConn = DbManager.getInstance().getConnection();
+                Connection playerConn = DbManager.getInstance().getConnection();
+                PreparedStatement updateUserStmt = userConn.prepareStatement(SQL_UPDATE_MOB_KILL_USER_BALANCE);
+                PreparedStatement updatePlayerStmt = playerConn.prepareStatement(SQL_UPDATE_MOB_KILL_PLAYER_TONGNAP)) {
             updateUserStmt.setInt(1, amount);
             updateUserStmt.setInt(2, amount);
             updateUserStmt.setInt(3, this.user.id);
             int updatedUsers = updateUserStmt.executeUpdate();
             if (updatedUsers <= 0) {
-                return;
+                return true;
             }
             updatePlayerStmt.setInt(1, amount);
             updatePlayerStmt.setInt(2, this.id);
             updatePlayerStmt.executeUpdate();
-            this.tongnap += amount;
-            serverMessage("Bạn nhận được " + NinjaUtils.getCurrency(amount) + " COIN từ quái.");
+            return true;
         } catch (SQLException e) {
             Log.error("addBalanceFromMobKill err", e);
+            return false;
         }
     }
 
