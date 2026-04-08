@@ -10208,7 +10208,9 @@ public class Char {
         String itemNameQuery = "SELECT `name` FROM `shop_items`";
         List<String> menuItemNames = new ArrayList<>();
 
-        try (Connection conn = DriverManager.getConnection(url, user, password); PreparedStatement itemNameStmt = conn.prepareStatement(itemNameQuery); ResultSet itemNameRs = itemNameStmt.executeQuery()) {
+        try (Connection conn = DriverManager.getConnection(url, user, password);
+             PreparedStatement itemNameStmt = conn.prepareStatement(itemNameQuery);
+             ResultSet itemNameRs = itemNameStmt.executeQuery()) {
 
             while (itemNameRs.next()) {
                 menuItemNames.add(itemNameRs.getString("name"));
@@ -10231,104 +10233,98 @@ public class Char {
                     this.serverDialog("Chưa nhập học mua đồ.");
                     return;
                 }
+
                 String itemQuery = "SELECT * FROM `shop_items` WHERE `name` = ?";
-                try (Connection conn = DriverManager.getConnection(url, user, password); PreparedStatement stmt = conn.prepareStatement(itemQuery)) {
+                try (Connection conn = DriverManager.getConnection(url, user, password);
+                     PreparedStatement stmt = conn.prepareStatement(itemQuery)) {
                     stmt.setString(1, finalMenuItemName);
+
                     try (ResultSet rs = stmt.executeQuery()) {
                         while (rs.next()) {
                             String itemIdsString = rs.getString("id_item");
+                            if (itemIdsString == null || itemIdsString.trim().isEmpty()) {
+                                this.serverDialog("Dữ liệu gói vật phẩm không hợp lệ.");
+                                continue;
+                            }
+
                             String[] itemIds = itemIdsString.split(",");
+                            List<Integer> parsedItemIds = new ArrayList<>();
                             for (String id : itemIds) {
-                                int itemId = Integer.parseInt(id.trim());
-                                int itemPrice = rs.getInt("price");
-                                String queryBalance = "SELECT `balance` FROM `users` WHERE `id` = ?";
-                                try (PreparedStatement balanceCheckStmt = conn.prepareStatement(queryBalance)) {
-                                    balanceCheckStmt.setInt(1, this.user.id);
-                                    try (ResultSet balanceResult = balanceCheckStmt.executeQuery()) {
-                                        if (balanceResult.next()) {
-                                            int oldBalance = balanceResult.getInt("balance");
-                                            if (oldBalance >= itemPrice) {
-                                                String updateBalance = "UPDATE `users` SET `balance` = `balance` - ? WHERE `id` = ?";
-                                                try (PreparedStatement updateStmt = conn.prepareStatement(updateBalance)) {
-                                                    updateStmt.setInt(1, itemPrice);
-                                                    updateStmt.setInt(2, this.user.id);
-                                                    int rowsAffected = updateStmt.executeUpdate();
+                                String trimId = id.trim();
+                                if (!trimId.isEmpty()) {
+                                    parsedItemIds.add(Integer.parseInt(trimId));
+                                }
+                            }
 
-                                                    int typeaddtobag = rs.getInt("typeaddtobag");
-                                                    if (rowsAffected > 0) {
-                                                        if (typeaddtobag == 1) {//đồ thường
-                                                            Item item = new Item(itemId);
+                            if (parsedItemIds.isEmpty()) {
+                                this.serverDialog("Dữ liệu gói vật phẩm không hợp lệ.");
+                                continue;
+                            }
 
-                                                            for (int i = 1; i <= 8; i++) {
-                                                                int optionId = rs.getInt("option_" + i + "_name");
-                                                                int optionValue = rs.getInt("option_" + i + "_value");
-                                                                if (optionValue != 0) {
-                                                                    item.options.add(new ItemOption(optionId, optionValue));
-                                                                }
-                                                            }
-                                                            item.isLock = rs.getBoolean("isLock");
-                                                            int capxx = rs.getInt("upgrade");
-                                                            int soluong = rs.getInt("quantity");
-                                                            item.next(capxx);
-                                                            item.setQuantity(soluong);
-                                                            themItemToBag(item);
-                                                        }
-                                                        if (typeaddtobag == 2) {//ngọc
-                                                            Item item = ItemFactory.getInstance().ngoc(itemId);
+                            int itemPrice = rs.getInt("price");
+                            long totalPriceLong = (long) itemPrice * parsedItemIds.size();
+                            if (totalPriceLong < 0 || totalPriceLong > Integer.MAX_VALUE) {
+                                this.serverDialog("Giá gói vật phẩm không hợp lệ.");
+                                continue;
+                            }
+                            int totalPrice = (int) totalPriceLong;
 
-                                                            for (int i = 1; i <= 8; i++) {
-                                                                int optionId = rs.getInt("option_" + i + "_name");
-                                                                int optionValue = rs.getInt("option_" + i + "_value");
-                                                                if (optionValue != 0) {
-                                                                    item.options.add(new ItemOption(optionId, optionValue));
-                                                                }
-                                                            }
-                                                            item.isLock = rs.getBoolean("isLock");
-                                                            int capxx = rs.getInt("upgrade");
-                                                            int soluong = rs.getInt("quantity");
-                                                            item.next(capxx);
-                                                            item.setQuantity(soluong);
-                                                            themItemToBag(item);
-                                                        }
-                                                        if (typeaddtobag == 3) {//trang bị có chỉ số
-                                                            Item item = ItemFactory.getInstance().newItem9X(itemId);
+                            String updateBalance = "UPDATE `users` SET `balance` = `balance` - ? WHERE `id` = ? AND `balance` >= ?";
+                            int rowsAffected;
+                            try (PreparedStatement updateStmt = conn.prepareStatement(updateBalance)) {
+                                updateStmt.setInt(1, totalPrice);
+                                updateStmt.setInt(2, this.user.id);
+                                updateStmt.setInt(3, totalPrice);
+                                rowsAffected = updateStmt.executeUpdate();
+                            }
 
-                                                            for (int i = 1; i <= 8; i++) {
-                                                                int optionId = rs.getInt("option_" + i + "_name");
-                                                                int optionValue = rs.getInt("option_" + i + "_value");
-                                                                if (optionValue != 0) {
-                                                                    item.options.add(new ItemOption(optionId, optionValue));
-                                                                }
-                                                            }
-                                                            item.isLock = rs.getBoolean("isLock");
-                                                            int capxx = rs.getInt("upgrade");
-                                                            int soluong = rs.getInt("quantity");
-                                                            if (classId == 1 || classId == 2) {
-                                                                item.sys = 1;
-                                                            } else if (classId == 3 || classId == 4) {
-                                                                item.sys = 2;
-                                                            } else if (classId == 5 || classId == 6) {
-                                                                item.sys = 3;
-                                                            }
-                                                            item.next(capxx);
-                                                            item.setQuantity(soluong);
-                                                            themItemToBag(item);
-                                                        }
-                                                    } else {
-                                                        this.serverDialog("Không thể cập nhật số dư.");
-                                                    }
-                                                }
-                                            } else {
-                                                this.serverDialog("Không đủ coin.");
-                                            }
-                                        } else {
-                                            this.serverDialog("Không tìm thấy thông tin người dùng.");
-                                        }
+                            if (rowsAffected <= 0) {
+                                this.serverDialog("Không đủ coin.");
+                                continue;
+                            }
+
+                            int typeaddtobag = rs.getInt("typeaddtobag");
+                            for (int itemId : parsedItemIds) {
+                                Item item = null;
+                                if (typeaddtobag == 1) {
+                                    item = new Item(itemId);
+                                }
+                                if (typeaddtobag == 2) {
+                                    item = ItemFactory.getInstance().ngoc(itemId);
+                                }
+                                if (typeaddtobag == 3) {
+                                    item = ItemFactory.getInstance().newItem9X(itemId);
+                                    if (classId == 1 || classId == 2) {
+                                        item.sys = 1;
+                                    } else if (classId == 3 || classId == 4) {
+                                        item.sys = 2;
+                                    } else if (classId == 5 || classId == 6) {
+                                        item.sys = 3;
                                     }
                                 }
+
+                                if (item == null) {
+                                    continue;
+                                }
+
+                                for (int i = 1; i <= 8; i++) {
+                                    int optionId = rs.getInt("option_" + i + "_name");
+                                    int optionValue = rs.getInt("option_" + i + "_value");
+                                    if (optionValue != 0) {
+                                        item.options.add(new ItemOption(optionId, optionValue));
+                                    }
+                                }
+                                item.isLock = rs.getBoolean("isLock");
+                                int capxx = rs.getInt("upgrade");
+                                int soluong = rs.getInt("quantity");
+                                item.next(capxx);
+                                item.setQuantity(soluong);
+                                themItemToBag(item);
                             }
                         }
                     }
+                } catch (NumberFormatException ex) {
+                    this.serverDialog("Dữ liệu id vật phẩm không hợp lệ.");
                 } catch (SQLException e) {
                     e.printStackTrace();
                     this.serverDialog("Lỗi khi truy vấn cơ sở dữ liệu.");
@@ -10336,7 +10332,6 @@ public class Char {
             }));
         }
     }
-
     public static void exportData(String characterName, long timestamp) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         Date date = new Date(timestamp);
