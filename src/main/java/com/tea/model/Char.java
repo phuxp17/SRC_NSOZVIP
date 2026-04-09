@@ -6399,6 +6399,10 @@ public class Char {
 
     private void sortBossEntries(List<BossMenuEntry> entries) {
         entries.sort((a, b) -> {
+            int compareOnline = Boolean.compare(b.isOnline, a.isOnline);
+            if (compareOnline != 0) {
+                return compareOnline;
+            }
             int compareMap = a.mapName.compareToIgnoreCase(b.mapName);
             if (compareMap != 0) {
                 return compareMap;
