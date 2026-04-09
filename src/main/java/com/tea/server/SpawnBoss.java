@@ -9,6 +9,8 @@ import com.tea.mob.MobManager;
 import com.tea.mob.MobTemplate;
 import com.tea.util.Log;
 import com.tea.util.NinjaUtils;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,6 +21,7 @@ public class SpawnBoss {
     private int id;
     private Map map;
     private final RandomCollection<Integer> mobs = new RandomCollection<>();
+    private final List<Integer> mobIds = new ArrayList<>();
     private Mob currMonster;
     private short x, y;
 
@@ -31,6 +34,7 @@ public class SpawnBoss {
 
     public void add(int rate, int mobID) {
         mobs.add(rate, mobID);
+        mobIds.add(mobID);
     }
 
     public void spawn() {

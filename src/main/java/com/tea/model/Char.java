@@ -101,6 +101,8 @@ import com.tea.server.LuckyDrawManager;
 import com.tea.server.Ranked;
 import com.tea.server.Server;
 import com.tea.server.ServerManager;
+import com.tea.server.SpawnBoss;
+import com.tea.server.SpawnBossManager;
 import com.tea.skill.Skill;
 import com.tea.stall.Stall;
 import com.tea.stall.StallManager;
@@ -215,7 +217,7 @@ public class Char {
             "UPDATE `users` SET `balance` = `balance` + ?, `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;";
     private static final String SQL_UPDATE_MOB_KILL_PLAYER_TONGNAP =
             "UPDATE `players` SET `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;";
-    private static final int BOSS_CHAT_PAGE_SIZE = 12;
+    private static final int BOSS_CHAT_PAGE_SIZE = 5;
 
     public static Char findCharByName(String name_input) {
         String name = getRealName(name_input);
@@ -6094,130 +6096,239 @@ public class Char {
         if (args.length == 0 || !args[0].equalsIgnoreCase("bs")) {
             return false;
         }
-
-        List<BossChatEntry> bossEntries = collectAliveBossEntries();
-        if (args.length == 1) {
-            showBossChatPage(bossEntries, 1, "Danh sách boss đang sống", "bs");
-            return true;
-        }
-
-        if (args[1].equalsIgnoreCase("help")) {
-            showBossChatHelp();
-            return true;
-        }
-
-        if (args[1].equalsIgnoreCase("map")) {
-            handleBossCommandBySpecialMap(args, bossEntries);
-            return true;
-        }
-
-        Integer page = tryParsePositiveInt(args[1]);
-        if (page != null) {
-            showBossChatPage(bossEntries, page, "Danh sách boss đang sống", "bs");
-            return true;
-        }
-
-        serverMessage("Lệnh không hợp lệ. Dùng: bs | bs <trang> | bs map | bs map <stt-map> [trang]");
+        openBossMainMenu();
         return true;
     }
 
-    private void showBossChatHelp() {
-        serverDialog("Hướng dẫn lệnh boss:\n"
-                + "- bs: xem trang 1 danh sách boss sống\n"
-                + "- bs <trang>: chuyển trang danh sách boss\n"
-                + "- bs map: xem danh sách map đặc biệt đang có boss\n"
-                + "- bs map <stt-map> [trang]: xem boss theo từng map đặc biệt");
+    private void openBossMainMenu() {
+        menus.clear();
+        menus.add(new Menu(CMDMenu.EXECUTE, "Boss thường", () ->
+                openBossPageMenu("Boss thường", buildNormalBossEntries(), this::openBossMainMenu)));
+        menus.add(new Menu(CMDMenu.EXECUTE, "Boss sự kiện", () ->
+                openBossPageMenu("Boss sự kiện", buildEventBossEntries(), this::openBossMainMenu)));
+        menus.add(new Menu(CMDMenu.EXECUTE, "Boss map đặc biệt", () ->
+                openSpecialBossMapMenu(buildSpecialBossGroups())));
+        getService().openUIMenu();
     }
 
-    private void handleBossCommandBySpecialMap(String[] args, List<BossChatEntry> bossEntries) {
-        List<BossMapGroup> groups = buildSpecialBossGroups(bossEntries);
+    private void openSpecialBossMapMenu(List<BossMapMenuGroup> groups) {
         if (groups.isEmpty()) {
-            serverMessage("Hiện tại không có boss nào ở map đặc biệt.");
+            serverDialog("Hiện tại chưa có dữ liệu boss map đặc biệt.");
             return;
         }
-
-        if (args.length == 2) {
-            showSpecialBossMapList(groups);
-            return;
+        menus.clear();
+        for (BossMapMenuGroup group : groups) {
+            final BossMapMenuGroup currentGroup = group;
+            menus.add(new Menu(CMDMenu.EXECUTE, currentGroup.mapName, () ->
+                    openBossPageMenu("Boss map đặc biệt - " + currentGroup.mapName, currentGroup.bosses,
+                            () -> openSpecialBossMapMenu(buildSpecialBossGroups()))));
         }
-
-        Integer mapIndex = tryParsePositiveInt(args[2]);
-        if (mapIndex == null || mapIndex > groups.size()) {
-            serverMessage("Map không hợp lệ. Dùng: bs map và chọn STT từ 1 đến " + groups.size());
-            return;
-        }
-
-        int page = 1;
-        if (args.length >= 4) {
-            Integer parsedPage = tryParsePositiveInt(args[3]);
-            if (parsedPage == null) {
-                serverMessage("Trang không hợp lệ.");
-                return;
-            }
-            page = parsedPage;
-        }
-
-        BossMapGroup group = groups.get(mapIndex - 1);
-        String title = "Boss map đặc biệt #" + mapIndex + ": " + group.mapName + " (map " + group.mapId + ")";
-        showBossChatPage(group.bosses, page, title, "bs map " + mapIndex);
+        menus.add(new Menu(CMDMenu.EXECUTE, "Quay lại", this::openBossMainMenu));
+        getService().openUIMenu();
     }
 
-    private void showSpecialBossMapList(List<BossMapGroup> groups) {
-        StringBuilder sb = new StringBuilder("Map đặc biệt đang có boss sống:\n");
-        for (int i = 0; i < groups.size(); i++) {
-            BossMapGroup group = groups.get(i);
-            sb.append(i + 1).append(". ")
-                    .append(group.mapName).append(" (map ").append(group.mapId).append(")")
-                    .append(" - ").append(group.bosses.size()).append(" boss\n");
-        }
-        sb.append("Xem chi tiết: bs map <stt-map> [trang]");
-        serverDialog(sb.toString());
-    }
-
-    private void showBossChatPage(List<BossChatEntry> entries, int page, String title, String commandPrefix) {
-        if (entries == null || entries.isEmpty()) {
-            serverMessage("Hiện tại không có boss nào đang sống.");
+    private void openBossPageMenu(String title, List<BossMenuEntry> entries, Runnable backAction) {
+        if (entries.isEmpty()) {
+            serverDialog(title + " hiện chưa có dữ liệu.");
             return;
         }
+        menus.clear();
+        int totalPages = (entries.size() + BOSS_CHAT_PAGE_SIZE - 1) / BOSS_CHAT_PAGE_SIZE;
+        for (int i = 0; i < totalPages; i++) {
+            final int page = i + 1;
+            menus.add(new Menu(CMDMenu.EXECUTE, "Trang " + page, () -> showBossPageDialog(title, entries, page)));
+        }
+        if (backAction != null) {
+            menus.add(new Menu(CMDMenu.EXECUTE, "Quay lại", backAction));
+        }
+        getService().openUIMenu();
+    }
 
+    private void showBossPageDialog(String title, List<BossMenuEntry> entries, int page) {
+        if (entries.isEmpty()) {
+            serverDialog(title + " hiện chưa có dữ liệu.");
+            return;
+        }
         int totalPages = (entries.size() + BOSS_CHAT_PAGE_SIZE - 1) / BOSS_CHAT_PAGE_SIZE;
         if (page < 1 || page > totalPages) {
-            serverMessage("Trang không hợp lệ. Trang hợp lệ: 1-" + totalPages);
+            serverDialog("Trang không hợp lệ.");
             return;
         }
-
         int fromIndex = (page - 1) * BOSS_CHAT_PAGE_SIZE;
         int toIndex = Math.min(fromIndex + BOSS_CHAT_PAGE_SIZE, entries.size());
-
         StringBuilder sb = new StringBuilder();
-        sb.append(title).append(" (").append(entries.size()).append(")")
-                .append(" - Trang ").append(page).append("/").append(totalPages).append("\n");
+        sb.append(title).append(" - Trang ").append(page).append("/").append(totalPages).append("\n");
         for (int i = fromIndex; i < toIndex; i++) {
-            BossChatEntry entry = entries.get(i);
-            sb.append(i + 1).append(". ")
-                    .append(entry.bossName)
-                    .append(" - ").append(entry.mapName)
-                    .append(" | Khu ").append(entry.zoneId)
-                    .append(" | X:").append(entry.x)
-                    .append(" Y:").append(entry.y)
-                    .append("\n");
+            sb.append(formatBossLine(entries.get(i)));
+            if (i < toIndex - 1) {
+                sb.append("\n");
+            }
         }
-        if (totalPages > 1) {
-            sb.append("Xem trang: ").append(commandPrefix).append(" <1-").append(totalPages).append(">\n");
-        }
-        sb.append("Xem map đặc biệt: bs map");
         serverDialog(sb.toString());
     }
 
-    private List<BossChatEntry> collectAliveBossEntries() {
-        List<BossChatEntry> entries = new ArrayList<>();
+    private List<BossMenuEntry> buildNormalBossEntries() {
+        return buildSpawnBossEntries(SpawnBossManager.THUONG);
+    }
+
+    private List<BossMenuEntry> buildEventBossEntries() {
+        List<BossMenuEntry> entries = new ArrayList<>();
+        String eventClassName = getCurrentEventClassName();
+        if (eventClassName == null || eventClassName.isEmpty()) {
+            return entries;
+        }
+        if (eventClassName.equals(SumMer.class.getName())) {
+            addEventBossEntry(entries, MobName.TU_LOI_DIEU_THIEN_LONG, MapName.CANH_DONG_FUKI, 1000000000, "00:00-23:59");
+            addEventBossEntry(entries, MobName.TU_LOI_DIEU_THIEN_LONG, MapName.RUNG_DAO_SAKURA, 1000000000, "00:00-23:59");
+            addEventBossEntry(entries, MobName.vt2, MapName.HANG_KARASUMORI_92, getTemplateHp(MobName.vt2), "12:30-02:30");
+        } else if (eventClassName.equals(LunarNewYear.class.getName())) {
+            addEventBossEntry(entries, MobName.HOP_BI_AN, MapName.CANH_DONG_FUKI, 20200, "00:00-23:59");
+            addEventBossEntry(entries, MobName.CHUOT_CANH_TY, MapName.RUNG_DAO_SAKURA, 1000000000, "00:00-23:59");
+        } else if (eventClassName.equals(Noel.class.getName())) {
+            addEventBossEntry(entries, MobName.NGUOI_TUYET, MapName.RUNG_DAO_SAKURA, 3000, "00:00-23:59");
+        } else if (eventClassName.equals(KoroKing.class.getName())) {
+            addKoroKingEventBossEntries(entries);
+        }
+        sortBossEntries(entries);
+        return entries;
+    }
+
+    private List<BossMapMenuGroup> buildSpecialBossGroups() {
+        List<BossMenuEntry> entries = new ArrayList<>();
+        entries.addAll(buildSpawnBossEntries(SpawnBossManager.VUNG_DAT_MA_QUY));
+        entries.addAll(buildSpawnBossEntries(SpawnBossManager.LANG_TRUYEN_THUYET));
+        entries.addAll(buildSpawnBossEntries(SpawnBossManager.LANG_CO));
+        List<BossMapMenuGroup> groups = new ArrayList<>();
+        for (BossMenuEntry entry : entries) {
+            BossMapMenuGroup group = findBossMapGroup(groups, entry.mapId);
+            if (group == null) {
+                group = new BossMapMenuGroup(entry.mapId, entry.mapName);
+                groups.add(group);
+            }
+            group.bosses.add(entry);
+        }
+        for (BossMapMenuGroup group : groups) {
+            sortBossEntries(group.bosses);
+        }
+        groups.sort((a, b) -> a.mapName.compareToIgnoreCase(b.mapName));
+        return groups;
+    }
+
+    private List<BossMenuEntry> buildSpawnBossEntries(String key) {
+        List<BossMenuEntry> entries = new ArrayList<>();
+        List<SpawnBoss> spawnBosses = SpawnBossManager.getInstance().getListSpawnBoss(key);
+        if (spawnBosses == null) {
+            return entries;
+        }
+        for (SpawnBoss spawnBoss : spawnBosses) {
+            Map map = spawnBoss.getMap();
+            if (map == null || map.tilemap == null) {
+                continue;
+            }
+            Mob currentBoss = spawnBoss.getCurrMonster();
+            boolean isOnline = currentBoss != null && !currentBoss.isDead && currentBoss.hp > 0 && currentBoss.zone != null;
+            int templateId = isOnline ? currentBoss.template.id : resolveSpawnBossTemplateId(spawnBoss);
+            if (templateId < 0) {
+                continue;
+            }
+            MobTemplate template = MobManager.getInstance().find(templateId);
+            if (template == null && !isOnline) {
+                continue;
+            }
+            String mapName = isOnline && currentBoss.zone.tilemap != null && currentBoss.zone.tilemap.name != null
+                    ? currentBoss.zone.tilemap.name
+                    : map.tilemap.name;
+            String bossName = isOnline ? currentBoss.template.name : template.name;
+            int maxHp = isOnline && currentBoss.maxHP > 0 ? currentBoss.maxHP : template.hp;
+            Integer zoneId = isOnline ? currentBoss.zone.id : null;
+            entries.add(new BossMenuEntry(
+                    bossName,
+                    templateId,
+                    maxHp,
+                    map.id,
+                    mapName,
+                    zoneId,
+                    isOnline,
+                    getRegularBossSpawnTime(isOnline)
+            ));
+        }
+        sortBossEntries(entries);
+        return entries;
+    }
+
+    private BossMenuEntry buildEventBossEntry(int templateId, int mapId, int hp, String spawnTime) {
+        Map map = MapManager.getInstance().find(mapId);
+        if (map == null || map.tilemap == null) {
+            return null;
+        }
+        MobTemplate template = MobManager.getInstance().find(templateId);
+        Mob currentBoss = findAliveBoss(mapId, templateId);
+        boolean isOnline = currentBoss != null && currentBoss.zone != null;
+        String bossName = isOnline ? currentBoss.template.name : (template != null ? template.name : "Boss");
+        int maxHp = isOnline && currentBoss.maxHP > 0
+                ? currentBoss.maxHP
+                : (hp > 0 ? hp : (template != null ? template.hp : 0));
+        return new BossMenuEntry(
+                bossName,
+                templateId,
+                maxHp,
+                mapId,
+                map.tilemap.name,
+                isOnline ? currentBoss.zone.id : null,
+                isOnline,
+                spawnTime
+        );
+    }
+
+    private void addEventBossEntry(List<BossMenuEntry> entries, int templateId, int mapId, int hp, String spawnTime) {
+        BossMenuEntry entry = buildEventBossEntry(templateId, mapId, hp, spawnTime);
+        if (entry != null) {
+            entries.add(entry);
+        }
+    }
+
+    private void addKoroKingEventBossEntries(List<BossMenuEntry> entries) {
+        List<BossMenuEntry> aliveEntries = findAliveBossEntriesByTemplate(MobName.KORO_KING, "Khi hạ quái");
+        if (!aliveEntries.isEmpty()) {
+            entries.addAll(aliveEntries);
+            return;
+        }
+        MobTemplate template = MobManager.getInstance().find(MobName.KORO_KING);
+        if (template == null) {
+            return;
+        }
+        entries.add(new BossMenuEntry(
+                template.name,
+                template.id,
+                template.hp,
+                -1,
+                "Toàn bản đồ",
+                null,
+                false,
+                "Khi hạ quái"
+        ));
+    }
+
+    private BossMapMenuGroup findBossMapGroup(List<BossMapMenuGroup> groups, int mapId) {
+        for (BossMapMenuGroup group : groups) {
+            if (group.mapId == mapId) {
+                return group;
+            }
+        }
+        return null;
+    }
+
+    private List<BossMenuEntry> findAliveBossEntriesByTemplate(int templateId, String spawnTime) {
+        List<BossMenuEntry> entries = new ArrayList<>();
+        MobTemplate template = MobManager.getInstance().find(templateId);
+        if (template == null) {
+            return entries;
+        }
         List<Map> maps = new ArrayList<>(MapManager.getInstance().getMaps());
         for (Map map : maps) {
             if (map == null || map.tilemap == null) {
                 continue;
             }
-            String mapName = map.tilemap.name != null ? map.tilemap.name : ("Map " + map.id);
-            boolean specialMap = isSpecialBossMap(map.tilemap);
             List<Zone> zones = new ArrayList<>(map.getZones());
             for (Zone zone : zones) {
                 if (zone == null || zone.getMonsters() == null) {
@@ -6225,108 +6336,151 @@ public class Char {
                 }
                 List<Mob> mobs = new ArrayList<>(zone.getMonsters());
                 for (Mob mob : mobs) {
-                    if (mob == null || mob.template == null || !mob.isBoss || mob.isDead || mob.hp <= 0) {
+                    if (mob == null || mob.template == null || mob.template.id != templateId || mob.isDead || mob.hp <= 0
+                            || mob.zone == null || mob.zone.tilemap == null) {
                         continue;
                     }
-                    entries.add(new BossChatEntry(
+                    entries.add(new BossMenuEntry(
                             mob.template.name,
-                            mapName,
+                            templateId,
+                            mob.maxHP > 0 ? mob.maxHP : template.hp,
                             map.id,
-                            zone.id,
-                            mob.x,
-                            mob.y,
-                            specialMap
+                            mob.zone.tilemap.name,
+                            mob.zone.id,
+                            true,
+                            spawnTime
                     ));
                 }
             }
         }
-        entries.sort((a, b) -> {
-            int cmp = Integer.compare(a.mapId, b.mapId);
-            if (cmp != 0) {
-                return cmp;
-            }
-            cmp = Integer.compare(a.zoneId, b.zoneId);
-            if (cmp != 0) {
-                return cmp;
-            }
-            return a.bossName.compareToIgnoreCase(b.bossName);
-        });
         return entries;
     }
 
-    private List<BossMapGroup> buildSpecialBossGroups(List<BossChatEntry> entries) {
-        List<BossMapGroup> groups = new ArrayList<>();
-        for (BossChatEntry entry : entries) {
-            if (!entry.specialMap) {
-                continue;
-            }
-            BossMapGroup found = null;
-            for (BossMapGroup group : groups) {
-                if (group.mapId == entry.mapId) {
-                    found = group;
-                    break;
-                }
-            }
-            if (found == null) {
-                found = new BossMapGroup(entry.mapId, entry.mapName);
-                groups.add(found);
-            }
-            found.bosses.add(entry);
-        }
-        return groups;
-    }
-
-    private boolean isSpecialBossMap(TileMap tilemap) {
-        if (tilemap == null) {
-            return false;
-        }
-        return tilemap.isDungeo()
-                || tilemap.isDungeoClan()
-                || tilemap.isThatThuAi()
-                || tilemap.isLangTruyenThuyet()
-                || tilemap.isLangCo()
-                || tilemap.isFujukaSanctuary()
-                || tilemap.isCandyBattlefield()
-                || tilemap.isLoiDai()
-                || tilemap.isChienTruong()
-                || tilemap.isTalentShow();
-    }
-
-    private Integer tryParsePositiveInt(String value) {
-        try {
-            int parsed = Integer.parseInt(value);
-            return parsed > 0 ? parsed : null;
-        } catch (NumberFormatException ex) {
+    private Mob findAliveBoss(int mapId, int templateId) {
+        Map map = MapManager.getInstance().find(mapId);
+        if (map == null) {
             return null;
         }
+        List<Zone> zones = new ArrayList<>(map.getZones());
+        for (Zone zone : zones) {
+            if (zone == null || zone.getMonsters() == null) {
+                continue;
+            }
+            List<Mob> mobs = new ArrayList<>(zone.getMonsters());
+            for (Mob mob : mobs) {
+                if (mob != null && mob.template != null && mob.template.id == templateId && !mob.isDead && mob.hp > 0) {
+                    return mob;
+                }
+            }
+        }
+        return null;
     }
 
-    private static class BossChatEntry {
-        private final String bossName;
-        private final String mapName;
-        private final int mapId;
-        private final int zoneId;
-        private final int x;
-        private final int y;
-        private final boolean specialMap;
+    private int resolveSpawnBossTemplateId(SpawnBoss spawnBoss) {
+        if (spawnBoss.getMobIds() == null || spawnBoss.getMobIds().isEmpty()) {
+            return -1;
+        }
+        return spawnBoss.getMobIds().get(0);
+    }
 
-        private BossChatEntry(String bossName, String mapName, int mapId, int zoneId, int x, int y, boolean specialMap) {
+    private int getTemplateHp(int templateId) {
+        MobTemplate template = MobManager.getInstance().find(templateId);
+        return template != null ? template.hp : 0;
+    }
+
+    private String getCurrentEventClassName() {
+        Event currentEvent = Event.getEvent();
+        if (currentEvent != null) {
+            return currentEvent.getClass().getName();
+        }
+        String configuredEvent = Config.getInstance().getEvent();
+        return configuredEvent != null ? configuredEvent.trim() : "";
+    }
+
+    private void sortBossEntries(List<BossMenuEntry> entries) {
+        entries.sort((a, b) -> {
+            int compareMap = a.mapName.compareToIgnoreCase(b.mapName);
+            if (compareMap != 0) {
+                return compareMap;
+            }
+            return a.bossName.compareToIgnoreCase(b.bossName);
+        });
+    }
+
+    private String getRegularBossSpawnTime(boolean isOnline) {
+        LocalDateTime now = LocalDateTime.now();
+        int hour = now.getHour();
+        if (isOnline) {
+            return String.format("%02d:00", hour - (hour % 2));
+        }
+        if (now.getMinute() == 0 && now.getSecond() == 0 && hour % 2 == 0) {
+            return String.format("%02d:00", hour);
+        }
+        int nextHour = (hour % 2 == 0) ? hour + 2 : hour + 1;
+        if (nextHour >= 24) {
+            nextHour -= 24;
+        }
+        return String.format("%02d:00", nextHour);
+    }
+
+    private String formatBossLine(BossMenuEntry entry) {
+        String zoneText = entry.isOnline && entry.zoneId != null ? "k" + entry.zoneId : "off";
+        return entry.bossName
+                + "|hp:" + formatBossHpShort(entry.maxHp)
+                + "|" + entry.mapName
+                + "|" + zoneText
+                + "|" + entry.spawnTime;
+    }
+
+    private String formatBossHpShort(long hp) {
+        if (hp >= 1_000_000_000L) {
+            return formatBossValue(hp / 1_000_000_000d, "b");
+        }
+        if (hp >= 1_000_000L) {
+            return formatBossValue(hp / 1_000_000d, "m");
+        }
+        if (hp >= 1_000L) {
+            return formatBossValue(hp / 1_000d, "k");
+        }
+        return String.valueOf(hp);
+    }
+
+    private String formatBossValue(double value, String suffix) {
+        String formatted = value == Math.floor(value)
+                ? String.format(Locale.US, "%.0f", value)
+                : String.format(Locale.US, "%.1f", value);
+        return formatted + suffix;
+    }
+
+    private static class BossMenuEntry {
+        private final String bossName;
+        private final int templateId;
+        private final int maxHp;
+        private final int mapId;
+        private final String mapName;
+        private final Integer zoneId;
+        private final boolean isOnline;
+        private final String spawnTime;
+
+        private BossMenuEntry(String bossName, int templateId, int maxHp, int mapId, String mapName, Integer zoneId,
+                boolean isOnline, String spawnTime) {
             this.bossName = bossName;
-            this.mapName = mapName;
+            this.templateId = templateId;
+            this.maxHp = maxHp;
             this.mapId = mapId;
+            this.mapName = mapName;
             this.zoneId = zoneId;
-            this.x = x;
-            this.y = y;
-            this.specialMap = specialMap;
+            this.isOnline = isOnline;
+            this.spawnTime = spawnTime;
         }
     }
 
-    private static class BossMapGroup {
+    private static class BossMapMenuGroup {
         private final int mapId;
         private final String mapName;
-        private final List<BossChatEntry> bosses = new ArrayList<>();
+        private final List<BossMenuEntry> bosses = new ArrayList<>();
 
-        private BossMapGroup(int mapId, String mapName) {
+        private BossMapMenuGroup(int mapId, String mapName) {
             this.mapId = mapId;
             this.mapName = mapName;
         }
