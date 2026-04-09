@@ -544,7 +544,7 @@ public class Events {
             _char.warningBagFull();
             return;
         }
-        int[] exps = {8000000, 16000000, 25000000};
+        int[] exps = {80000, 16000, 25000};
         int exp = exps[NinjaUtils.randomWithRate(new int[]{50, 30, 20})];
             _char.addExp(exp);
         if (NinjaUtils.nextBoolean()) {
@@ -1182,7 +1182,7 @@ public class Events {
 
         if (rc != null) {
             for (int i = 0; i < number; i++) {
-                    p.addExp(5000000);
+                    p.addExp(50000);
                 int itemId = rc.next();
                 Item itm = ItemFactory.getInstance().newItem(itemId);
                 itm.initExpire();

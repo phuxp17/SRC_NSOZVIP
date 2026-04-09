@@ -395,9 +395,9 @@ public abstract class Event {
                 int expPercentage1 = 1; 
                 int randomValue = random.nextInt(100);
                 if (randomValue < expPercentage) {
-                    p.addExp(8000000);
+                    p.addExp(8000);
                 }else if (randomValue == expPercentage1) {
-                    p.addExp(20000000);
+                    p.addExp(20000);
                     GlobalService.getInstance().chat("Hệ thống","Người chơi "+
                             Char.setNameVip(p.name) + " sử dụng " + itmUsed.template.name + " nhận được 20tr Kinh nghiệm");
                 }else {
