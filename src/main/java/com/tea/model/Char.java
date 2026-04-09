@@ -3048,7 +3048,7 @@ public class Char {
 
                                     Item item2 = ItemFactory.getInstance().newItem(id);
                                     themItemToBag(item2);
-                                    addExp(5000000);
+                                    addExp(50000);
                                     if (percent[index] <= 10) {
                                         zone.getService().chat(_char.id, "Haha! Được một con "
                                                 + item2.template.name + " rồi nè!");
