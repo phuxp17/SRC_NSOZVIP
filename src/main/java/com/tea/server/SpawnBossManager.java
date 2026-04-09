@@ -23,6 +23,7 @@ public class SpawnBossManager {
     public static final String LANG_TRUYEN_THUYET = "ltt";
     public static final String LANG_CO = "lc";
     public static final String VI_THU = "vt";
+    public static final int REGULAR_BOSS_REPEAT_HOURS = 1;
     public static final byte ALL = 0;
     public static final byte RANDOM = 1;
 

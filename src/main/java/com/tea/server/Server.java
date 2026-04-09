@@ -1716,10 +1716,10 @@ public class Server {
 //            SpawnBossManager.getInstance().spawn(6, 0, 0, SpawnBossManager.LANG_CO, SpawnBossManager.ALL);
 //            SpawnBossManager.getInstance().spawn(21, 0, 0, SpawnBossManager.LANG_CO, SpawnBossManager.ALL);
 //            SpawnBossManager.getInstance().spawn(12, 30, 0, SpawnBossManager.LANG_CO, SpawnBossManager.ALL);
-            SpawnBossManager.getInstance().spawnRepeat(SpawnBossManager.LANG_TRUYEN_THUYET, 2, SpawnBossManager.ALL);
-            SpawnBossManager.getInstance().spawnRepeat(SpawnBossManager.THUONG, 2, SpawnBossManager.ALL);
-            SpawnBossManager.getInstance().spawnRepeat(SpawnBossManager.VUNG_DAT_MA_QUY, 2, SpawnBossManager.ALL);
-            SpawnBossManager.getInstance().spawnRepeat(SpawnBossManager.LANG_CO, 2, SpawnBossManager.ALL);
+            SpawnBossManager.getInstance().spawnRepeat(SpawnBossManager.LANG_TRUYEN_THUYET, SpawnBossManager.REGULAR_BOSS_REPEAT_HOURS, SpawnBossManager.ALL);
+            SpawnBossManager.getInstance().spawnRepeat(SpawnBossManager.THUONG, SpawnBossManager.REGULAR_BOSS_REPEAT_HOURS, SpawnBossManager.ALL);
+            SpawnBossManager.getInstance().spawnRepeat(SpawnBossManager.VUNG_DAT_MA_QUY, SpawnBossManager.REGULAR_BOSS_REPEAT_HOURS, SpawnBossManager.ALL);
+            SpawnBossManager.getInstance().spawnRepeat(SpawnBossManager.LANG_CO, SpawnBossManager.REGULAR_BOSS_REPEAT_HOURS, SpawnBossManager.ALL);
             Clan.start();
             War.timer(13, 0, 0, War.TYPE_LEVEL_30_TO_50);
             War.timer(16, 0, 0, War.TYPE_ALL_LEVEL);

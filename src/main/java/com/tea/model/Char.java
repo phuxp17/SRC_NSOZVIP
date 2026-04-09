@@ -6413,16 +6413,18 @@ public class Char {
 
     private String getRegularBossSpawnTime(boolean isOnline) {
         LocalDateTime now = LocalDateTime.now();
+        int intervalHours = Math.max(1, SpawnBossManager.REGULAR_BOSS_REPEAT_HOURS);
         int hour = now.getHour();
+        int currentCycleHour = hour - (hour % intervalHours);
         if (isOnline) {
-            return String.format("%02d:00", hour - (hour % 2));
+            return String.format("%02d:00", currentCycleHour);
         }
-        if (now.getMinute() == 0 && now.getSecond() == 0 && hour % 2 == 0) {
+        if (now.getMinute() == 0 && now.getSecond() == 0 && hour % intervalHours == 0) {
             return String.format("%02d:00", hour);
         }
-        int nextHour = (hour % 2 == 0) ? hour + 2 : hour + 1;
+        int nextHour = currentCycleHour + intervalHours;
         if (nextHour >= 24) {
-            nextHour -= 24;
+            nextHour %= 24;
         }
         return String.format("%02d:00", nextHour);
     }
