@@ -215,6 +215,7 @@ public class Char {
             "UPDATE `users` SET `balance` = `balance` + ?, `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;";
     private static final String SQL_UPDATE_MOB_KILL_PLAYER_TONGNAP =
             "UPDATE `players` SET `tongnap` = `tongnap` + ? WHERE `id` = ? LIMIT 1;";
+    private static final int BOSS_CHAT_PAGE_SIZE = 12;
 
     public static Char findCharByName(String name_input) {
         String name = getRealName(name_input);
@@ -6065,9 +6066,15 @@ public class Char {
             if (text.length() > 300) {
                 return;
             }
-            text = text.replace("\n", " ");
+            text = text.replace("\n", " ").trim();
+            if (text.isEmpty()) {
+                return;
+            }
             if (text.equalsIgnoreCase("dn")) {
                 viewBalanceAndTongnap(this);
+                return;
+            }
+            if (processBossChatCommand(text)) {
                 return;
             }
             if (AdminService.getInstance().process(this, text)) {
@@ -6079,6 +6086,249 @@ public class Char {
             zone.getService().chat(this.id, text);
         } catch (Exception ex) {
             Log.error("err: " + ex.getMessage(), ex);
+        }
+    }
+
+    private boolean processBossChatCommand(String text) {
+        String[] args = text.split("\\s+");
+        if (args.length == 0 || !args[0].equalsIgnoreCase("bs")) {
+            return false;
+        }
+
+        List<BossChatEntry> bossEntries = collectAliveBossEntries();
+        if (args.length == 1) {
+            showBossChatPage(bossEntries, 1, "Danh sách boss đang sống", "bs");
+            return true;
+        }
+
+        if (args[1].equalsIgnoreCase("help")) {
+            showBossChatHelp();
+            return true;
+        }
+
+        if (args[1].equalsIgnoreCase("map")) {
+            handleBossCommandBySpecialMap(args, bossEntries);
+            return true;
+        }
+
+        Integer page = tryParsePositiveInt(args[1]);
+        if (page != null) {
+            showBossChatPage(bossEntries, page, "Danh sách boss đang sống", "bs");
+            return true;
+        }
+
+        serverMessage("Lệnh không hợp lệ. Dùng: bs | bs <trang> | bs map | bs map <stt-map> [trang]");
+        return true;
+    }
+
+    private void showBossChatHelp() {
+        serverDialog("Hướng dẫn lệnh boss:\n"
+                + "- bs: xem trang 1 danh sách boss sống\n"
+                + "- bs <trang>: chuyển trang danh sách boss\n"
+                + "- bs map: xem danh sách map đặc biệt đang có boss\n"
+                + "- bs map <stt-map> [trang]: xem boss theo từng map đặc biệt");
+    }
+
+    private void handleBossCommandBySpecialMap(String[] args, List<BossChatEntry> bossEntries) {
+        List<BossMapGroup> groups = buildSpecialBossGroups(bossEntries);
+        if (groups.isEmpty()) {
+            serverMessage("Hiện tại không có boss nào ở map đặc biệt.");
+            return;
+        }
+
+        if (args.length == 2) {
+            showSpecialBossMapList(groups);
+            return;
+        }
+
+        Integer mapIndex = tryParsePositiveInt(args[2]);
+        if (mapIndex == null || mapIndex > groups.size()) {
+            serverMessage("Map không hợp lệ. Dùng: bs map và chọn STT từ 1 đến " + groups.size());
+            return;
+        }
+
+        int page = 1;
+        if (args.length >= 4) {
+            Integer parsedPage = tryParsePositiveInt(args[3]);
+            if (parsedPage == null) {
+                serverMessage("Trang không hợp lệ.");
+                return;
+            }
+            page = parsedPage;
+        }
+
+        BossMapGroup group = groups.get(mapIndex - 1);
+        String title = "Boss map đặc biệt #" + mapIndex + ": " + group.mapName + " (map " + group.mapId + ")";
+        showBossChatPage(group.bosses, page, title, "bs map " + mapIndex);
+    }
+
+    private void showSpecialBossMapList(List<BossMapGroup> groups) {
+        StringBuilder sb = new StringBuilder("Map đặc biệt đang có boss sống:\n");
+        for (int i = 0; i < groups.size(); i++) {
+            BossMapGroup group = groups.get(i);
+            sb.append(i + 1).append(". ")
+                    .append(group.mapName).append(" (map ").append(group.mapId).append(")")
+                    .append(" - ").append(group.bosses.size()).append(" boss\n");
+        }
+        sb.append("Xem chi tiết: bs map <stt-map> [trang]");
+        serverDialog(sb.toString());
+    }
+
+    private void showBossChatPage(List<BossChatEntry> entries, int page, String title, String commandPrefix) {
+        if (entries == null || entries.isEmpty()) {
+            serverMessage("Hiện tại không có boss nào đang sống.");
+            return;
+        }
+
+        int totalPages = (entries.size() + BOSS_CHAT_PAGE_SIZE - 1) / BOSS_CHAT_PAGE_SIZE;
+        if (page < 1 || page > totalPages) {
+            serverMessage("Trang không hợp lệ. Trang hợp lệ: 1-" + totalPages);
+            return;
+        }
+
+        int fromIndex = (page - 1) * BOSS_CHAT_PAGE_SIZE;
+        int toIndex = Math.min(fromIndex + BOSS_CHAT_PAGE_SIZE, entries.size());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(title).append(" (").append(entries.size()).append(")")
+                .append(" - Trang ").append(page).append("/").append(totalPages).append("\n");
+        for (int i = fromIndex; i < toIndex; i++) {
+            BossChatEntry entry = entries.get(i);
+            sb.append(i + 1).append(". ")
+                    .append(entry.bossName)
+                    .append(" - ").append(entry.mapName)
+                    .append(" | Khu ").append(entry.zoneId)
+                    .append(" | X:").append(entry.x)
+                    .append(" Y:").append(entry.y)
+                    .append("\n");
+        }
+        if (totalPages > 1) {
+            sb.append("Xem trang: ").append(commandPrefix).append(" <1-").append(totalPages).append(">\n");
+        }
+        sb.append("Xem map đặc biệt: bs map");
+        serverDialog(sb.toString());
+    }
+
+    private List<BossChatEntry> collectAliveBossEntries() {
+        List<BossChatEntry> entries = new ArrayList<>();
+        List<Map> maps = new ArrayList<>(MapManager.getInstance().getMaps());
+        for (Map map : maps) {
+            if (map == null || map.tilemap == null) {
+                continue;
+            }
+            String mapName = map.tilemap.name != null ? map.tilemap.name : ("Map " + map.id);
+            boolean specialMap = isSpecialBossMap(map.tilemap);
+            List<Zone> zones = new ArrayList<>(map.getZones());
+            for (Zone zone : zones) {
+                if (zone == null || zone.getMonsters() == null) {
+                    continue;
+                }
+                List<Mob> mobs = new ArrayList<>(zone.getMonsters());
+                for (Mob mob : mobs) {
+                    if (mob == null || mob.template == null || !mob.isBoss || mob.isDead || mob.hp <= 0) {
+                        continue;
+                    }
+                    entries.add(new BossChatEntry(
+                            mob.template.name,
+                            mapName,
+                            map.id,
+                            zone.id,
+                            mob.x,
+                            mob.y,
+                            specialMap
+                    ));
+                }
+            }
+        }
+        entries.sort((a, b) -> {
+            int cmp = Integer.compare(a.mapId, b.mapId);
+            if (cmp != 0) {
+                return cmp;
+            }
+            cmp = Integer.compare(a.zoneId, b.zoneId);
+            if (cmp != 0) {
+                return cmp;
+            }
+            return a.bossName.compareToIgnoreCase(b.bossName);
+        });
+        return entries;
+    }
+
+    private List<BossMapGroup> buildSpecialBossGroups(List<BossChatEntry> entries) {
+        List<BossMapGroup> groups = new ArrayList<>();
+        for (BossChatEntry entry : entries) {
+            if (!entry.specialMap) {
+                continue;
+            }
+            BossMapGroup found = null;
+            for (BossMapGroup group : groups) {
+                if (group.mapId == entry.mapId) {
+                    found = group;
+                    break;
+                }
+            }
+            if (found == null) {
+                found = new BossMapGroup(entry.mapId, entry.mapName);
+                groups.add(found);
+            }
+            found.bosses.add(entry);
+        }
+        return groups;
+    }
+
+    private boolean isSpecialBossMap(TileMap tilemap) {
+        if (tilemap == null) {
+            return false;
+        }
+        return tilemap.isDungeo()
+                || tilemap.isDungeoClan()
+                || tilemap.isThatThuAi()
+                || tilemap.isLangTruyenThuyet()
+                || tilemap.isLangCo()
+                || tilemap.isFujukaSanctuary()
+                || tilemap.isCandyBattlefield()
+                || tilemap.isLoiDai()
+                || tilemap.isChienTruong()
+                || tilemap.isTalentShow();
+    }
+
+    private Integer tryParsePositiveInt(String value) {
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : null;
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static class BossChatEntry {
+        private final String bossName;
+        private final String mapName;
+        private final int mapId;
+        private final int zoneId;
+        private final int x;
+        private final int y;
+        private final boolean specialMap;
+
+        private BossChatEntry(String bossName, String mapName, int mapId, int zoneId, int x, int y, boolean specialMap) {
+            this.bossName = bossName;
+            this.mapName = mapName;
+            this.mapId = mapId;
+            this.zoneId = zoneId;
+            this.x = x;
+            this.y = y;
+            this.specialMap = specialMap;
+        }
+    }
+
+    private static class BossMapGroup {
+        private final int mapId;
+        private final String mapName;
+        private final List<BossChatEntry> bosses = new ArrayList<>();
+
+        private BossMapGroup(int mapId, String mapName) {
+            this.mapId = mapId;
+            this.mapName = mapName;
         }
     }
 
