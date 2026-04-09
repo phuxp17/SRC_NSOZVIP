@@ -7368,16 +7368,21 @@ public class Char {
 
     public void addExp(Mob mob, int dame) {
         int dLevel = Math.abs(mob.level - this.level);
-        if (mob.template.id != MobName.BU_NHIN && (dLevel <= 10)) {
+        if (mob.template.id != MobName.BU_NHIN) {
+            if (mob.isBoss) {
+                addExp(1);
+                return;
+            }
+            if (dLevel > 10) {
+                return;
+            }
             long exp = 1;
             int a = this.level / 20;
             a = a == 0 ? 1 : a;
             int b = dame * a;
             int c = (mob.level - this.level) * a;
             exp = (b / 2) + (b * c / 100);
-            if (mob.isBoss) {
-                exp *= 6;
-            } else if (mob.levelBoss == 1) {
+            if (mob.levelBoss == 1) {
                 exp *= 2;
             } else if (mob.levelBoss == 2) {
                 exp *= 5;
