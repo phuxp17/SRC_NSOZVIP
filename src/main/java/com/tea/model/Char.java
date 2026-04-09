@@ -6107,23 +6107,38 @@ public class Char {
         menus.add(new Menu(CMDMenu.EXECUTE, "Boss sự kiện", () ->
                 openBossPageMenu("Boss sự kiện", buildEventBossEntries(), this::openBossMainMenu)));
         menus.add(new Menu(CMDMenu.EXECUTE, "Boss map đặc biệt", () ->
-                openSpecialBossMapMenu(buildSpecialBossGroups())));
+                openSpecialBossCategoryMenu(buildSpecialBossCategories())));
         getService().openUIMenu();
     }
 
-    private void openSpecialBossMapMenu(List<BossMapMenuGroup> groups) {
-        if (groups.isEmpty()) {
+    private void openSpecialBossCategoryMenu(List<BossSpecialCategory> categories) {
+        if (categories.isEmpty()) {
             serverDialog("Hiện tại chưa có dữ liệu boss map đặc biệt.");
             return;
         }
         menus.clear();
-        for (BossMapMenuGroup group : groups) {
-            final BossMapMenuGroup currentGroup = group;
-            menus.add(new Menu(CMDMenu.EXECUTE, currentGroup.mapName, () ->
-                    openBossPageMenu("Boss map đặc biệt - " + currentGroup.mapName, currentGroup.bosses,
-                            () -> openSpecialBossMapMenu(buildSpecialBossGroups()))));
+        for (BossSpecialCategory category : categories) {
+            final BossSpecialCategory currentCategory = category;
+            menus.add(new Menu(CMDMenu.EXECUTE, currentCategory.name, () ->
+                    openSpecialBossMapMenu(currentCategory, () -> openSpecialBossCategoryMenu(buildSpecialBossCategories()))));
         }
         menus.add(new Menu(CMDMenu.EXECUTE, "Quay lại", this::openBossMainMenu));
+        getService().openUIMenu();
+    }
+
+    private void openSpecialBossMapMenu(BossSpecialCategory category, Runnable backAction) {
+        if (category == null || category.mapGroups.isEmpty()) {
+            serverDialog("Nhóm map đặc biệt này hiện chưa có boss.");
+            return;
+        }
+        menus.clear();
+        for (BossMapMenuGroup group : category.mapGroups) {
+            final BossMapMenuGroup currentGroup = group;
+            menus.add(new Menu(CMDMenu.EXECUTE, currentGroup.mapName, () ->
+                    openBossPageMenu("Boss map đặc biệt - " + category.name + " - " + currentGroup.mapName, currentGroup.bosses,
+                            () -> openSpecialBossMapMenu(category, backAction))));
+        }
+        menus.add(new Menu(CMDMenu.EXECUTE, "Quay lại", backAction));
         getService().openUIMenu();
     }
 
@@ -6193,11 +6208,26 @@ public class Char {
         return entries;
     }
 
-    private List<BossMapMenuGroup> buildSpecialBossGroups() {
+    private List<BossSpecialCategory> buildSpecialBossCategories() {
+        List<BossSpecialCategory> categories = new ArrayList<>();
+        List<BossMapMenuGroup> vdmqGroups = buildSpecialBossMapGroupsByKey(SpawnBossManager.VUNG_DAT_MA_QUY);
+        if (!vdmqGroups.isEmpty()) {
+            categories.add(new BossSpecialCategory("Vùng đất ma quỷ", vdmqGroups));
+        }
+        List<BossMapMenuGroup> lttGroups = buildSpecialBossMapGroupsByKey(SpawnBossManager.LANG_TRUYEN_THUYET);
+        if (!lttGroups.isEmpty()) {
+            categories.add(new BossSpecialCategory("Làng truyền thuyết", lttGroups));
+        }
+        List<BossMapMenuGroup> lcGroups = buildSpecialBossMapGroupsByKey(SpawnBossManager.LANG_CO);
+        if (!lcGroups.isEmpty()) {
+            categories.add(new BossSpecialCategory("Làng cổ", lcGroups));
+        }
+        return categories;
+    }
+
+    private List<BossMapMenuGroup> buildSpecialBossMapGroupsByKey(String key) {
         List<BossMenuEntry> entries = new ArrayList<>();
-        entries.addAll(buildSpawnBossEntries(SpawnBossManager.VUNG_DAT_MA_QUY));
-        entries.addAll(buildSpawnBossEntries(SpawnBossManager.LANG_TRUYEN_THUYET));
-        entries.addAll(buildSpawnBossEntries(SpawnBossManager.LANG_CO));
+        entries.addAll(buildSpawnBossEntries(key));
         List<BossMapMenuGroup> groups = new ArrayList<>();
         for (BossMenuEntry entry : entries) {
             BossMapMenuGroup group = findBossMapGroup(groups, entry.mapId);
@@ -6489,6 +6519,16 @@ public class Char {
         private BossMapMenuGroup(int mapId, String mapName) {
             this.mapId = mapId;
             this.mapName = mapName;
+        }
+    }
+
+    private static class BossSpecialCategory {
+        private final String name;
+        private final List<BossMapMenuGroup> mapGroups;
+
+        private BossSpecialCategory(String name, List<BossMapMenuGroup> mapGroups) {
+            this.name = name;
+            this.mapGroups = mapGroups;
         }
     }
 
