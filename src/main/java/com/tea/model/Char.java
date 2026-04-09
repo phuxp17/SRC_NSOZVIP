@@ -3954,10 +3954,10 @@ public class Char {
                                     int index = NinjaUtils.randomWithRate(percent, 100);
                                     int id = idItem[index];
                                     if (id == -1) {
-                                        int exp = NinjaUtils.nextInt(1, 10) * 100000;
+                                        int exp = NinjaUtils.nextInt(1, 10) * 100;
                                         addExp(exp);
                                         serverMessage("Bạn nhận được " + NinjaUtils.getCurrency(exp)
-                                                + " kinh nghiệm");
+                                                + " kinh nghiệm. Cày còn nhanh hơn");
                                     } else if (id == -2) {
                                         zone.getService().chat(_char.id, "Ôi? Dây câu đứt mất rồi!");
                                     } else {
