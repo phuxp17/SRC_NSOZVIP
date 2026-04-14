@@ -28,10 +28,10 @@ services:
       - .env.aapanel
     environment:
       TZ: Asia/Ho_Chi_Minh
-      NSO_DB_HOST: ${NSO_DB_HOST:-mariadb}
+      NSO_DB_HOST: ${NSO_DB_HOST:-db}
       NSO_DB_PORT: ${NSO_DB_PORT:-3306}
       NSO_DB_NAME: ${NSO_DB_NAME:-nso}
-      NSO_DB_USER: ${NSO_DB_USER:-root}
+      NSO_DB_USER: ${NSO_DB_USER:-nso_user}
       NSO_DB_PASSWORD: ${NSO_DB_PASSWORD}
       NSO_MONGODB_HOST: ${NSO_MONGODB_HOST:-mongo}
       NSO_MONGODB_PORT: ${NSO_MONGODB_PORT:-27017}
