@@ -18853,6 +18853,9 @@ public class Char {
             menus.add(new Menu(CMDMenu.EXECUTE, "đổi 1tr coin", () -> {
                 doiLuong(this, 8);
             }));
+            menus.add(new Menu(CMDMenu.EXECUTE, "đổi 2tr coin", () -> {
+                doiLuong(this, 9);
+            }));
             getService().openUIMenu();
         }));
         menus.add(new Menu(CMDMenu.EXECUTE, "Đổi COIN ra Xu", () -> {
