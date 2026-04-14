@@ -119,8 +119,8 @@ public class RandomItem {
         BOSS_LANG_TRUYEN_THUYET.add(2, ItemName.t4);
         BOSS_LANG_TRUYEN_THUYET.add(1, ItemName.t5);
         BOSS_LANG_TRUYEN_THUYET.add(0.5, ItemName.t6);
-//        BOSS_LANG_TRUYEN_THUYET.add(0.5, 1269);
-//        BOSS_LANG_TRUYEN_THUYET.add(0.1, 1271);
+        BOSS_LANG_TRUYEN_THUYET.add(0.1, 1269);
+        BOSS_LANG_TRUYEN_THUYET.add(0.1, 1270);
         
         // Làng truyền thuyết
         LANG_TRUYEN_THUYET.add(1, ItemName.HARLEY_DAVIDSON);
@@ -238,8 +238,8 @@ public class RandomItem {
         BOSS_LANG_CO.add(2, ItemName.t4);
         BOSS_LANG_CO.add(1, ItemName.t5);
         BOSS_LANG_CO.add(0.5, ItemName.t6);
-//        BOSS_LANG_CO.add(0.5, 1269);
-//        BOSS_LANG_CO.add(0.1, 1271);
+        BOSS_LANG_CO.add(0.5, 1269);
+        BOSS_LANG_CO.add(0.1, 1270);
         
         //map úp yên 
         UPYEN.add(100, ItemName.YEN);
@@ -349,6 +349,7 @@ public class RandomItem {
         BOSS.add(2, ItemName.ST);
         BOSS.add(2, ItemName.PN);
         BOSS.add(2, ItemName.SM);
+        BOSS.add(2, 1294);
 
        // Vùng đất ma quỷ --- đang nhân 10 mỗi item trừ đá 5
         VDMQ.add(0.5, ItemName.THU_TRANG);
@@ -421,8 +422,8 @@ public class RandomItem {
         BOSS_VDMQ.add(0.5, ItemName.t5);
         BOSS_VDMQ.add(0.1, ItemName.t6);
         BOSS_VDMQ.add(0.1, 1269);
-        BOSS_VDMQ.add(0.05, 1271);
-        
+        BOSS_VDMQ.add(0.05, 1270);
+
 
         // Khí bảo
         KHI_BAO.add(20, ItemName.DINH_VI);

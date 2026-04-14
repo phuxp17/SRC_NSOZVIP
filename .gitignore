@@ -17,3 +17,6 @@
 *.sql
 *.txt
 /.env.aapanel.example
+/Web/register.html
+/Web/register.php
+/Web/success.php

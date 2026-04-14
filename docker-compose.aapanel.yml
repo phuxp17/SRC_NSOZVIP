@@ -56,7 +56,6 @@ services:
       - ./new:/app/new
       - ./chongddos:/app/chongddos
       - ./logs:/app/logs
-      - ./listddhn.txt:/app/listddhn.txt
     networks:
       - nso_net
 
