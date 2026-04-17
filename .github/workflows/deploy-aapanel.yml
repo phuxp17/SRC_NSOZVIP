@@ -20,6 +20,7 @@ jobs:
     env:
       DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH }}
       VPS_PORT: ${{ vars.VPS_PORT }}
+      SSH_OPTIONS: -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=~/.ssh/known_hosts
 
     steps:
       - name: Checkout
@@ -30,14 +31,10 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
 
-      - name: Add VPS to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -p "${VPS_PORT:-22}" -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
-
       - name: Ensure deploy path exists on VPS
         run: |
-          ssh -p "${VPS_PORT:-22}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+          mkdir -p ~/.ssh
+          ssh ${SSH_OPTIONS} -p "${VPS_PORT:-22}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             "mkdir -p '${DEPLOY_PATH:-/opt/nso}'"
 
       - name: Sync source to VPS
@@ -55,10 +52,10 @@ jobs:
             --exclude 'chongddos/' \
             --exclude '.env.aapanel' \
             --exclude '.env.vps' \
-            -e "ssh -p ${VPS_PORT:-22}" \
+            -e "ssh ${SSH_OPTIONS} -p ${VPS_PORT:-22}" \
             ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${DEPLOY_PATH:-/opt/nso}/"
 
       - name: Deploy with Docker Compose on VPS
         run: |
-          ssh -p "${VPS_PORT:-22}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+          ssh ${SSH_OPTIONS} -p "${VPS_PORT:-22}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
             "cd '${DEPLOY_PATH:-/opt/nso}' && chmod +x scripts/deploy-vps.sh && DEPLOY_PATH='${DEPLOY_PATH:-/opt/nso}' COMPOSE_FILE='docker-compose.vps.yml' ENV_FILE='.env.vps' ./scripts/deploy-vps.sh"
