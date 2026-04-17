@@ -1,0 +1,105 @@
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: nso-mariadb
+    restart: unless-stopped
+    env_file:
+      - .env.vps
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      MARIADB_DATABASE: ${NSO_DB_NAME:-nso}
+      MARIADB_USER: ${NSO_DB_USER:-nso_user}
+      MARIADB_PASSWORD: ${NSO_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - nso_net
+
+  mongo:
+    image: mongo:7.0
+    container_name: nso-mongo
+    restart: unless-stopped
+    env_file:
+      - .env.vps
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mongosh --quiet --eval "db.runCommand({ ping: 1 }).ok" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - nso_net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nso-app
+    restart: unless-stopped
+    stop_grace_period: 2m
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    env_file:
+      - .env.vps
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      NSO_DB_HOST: ${NSO_DB_HOST:-mariadb}
+      NSO_DB_PORT: ${NSO_DB_PORT:-3306}
+      NSO_DB_NAME: ${NSO_DB_NAME:-nso}
+      NSO_DB_USER: ${NSO_DB_USER:-nso_user}
+      NSO_DB_PASSWORD: ${NSO_DB_PASSWORD}
+      NSO_MONGODB_HOST: ${NSO_MONGODB_HOST:-mongo}
+      NSO_MONGODB_PORT: ${NSO_MONGODB_PORT:-27017}
+      NSO_MONGODB_NAME: ${NSO_MONGODB_NAME:-admin}
+      NSO_MONGODB_USER: ${NSO_MONGODB_USER:-root}
+      NSO_MONGODB_PASSWORD: ${NSO_MONGODB_PASSWORD}
+      NSO_SERVER_UI_ENABLED: "false"
+      NSO_SERVERINFO_ENABLED: "false"
+      NSO_SERVER_PORT: "${NSO_SERVER_PORT:-14444}"
+      NSO_WEBSOCKET_ENABLED: "${NSO_WEBSOCKET_ENABLED:-false}"
+      NSO_WEBSOCKET_HOST: "${NSO_WEBSOCKET_HOST:-}"
+      NSO_WEBSOCKET_PORT: "${NSO_WEBSOCKET_PORT:-0}"
+      JAVA_OPTS: "${JAVA_OPTS:--server -Xms2G -Xmx4G -Dfile.encoding=UTF-8 -Djava.awt.headless=true}"
+    ports:
+      - "${NSO_SERVER_PORT:-14444}:${NSO_SERVER_PORT:-14444}"
+    volumes:
+      - ./deploy/config.vps.properties:/app/config.properties:ro
+      - ./Data:/app/Data:ro
+      - ./diemdanh:/app/diemdanh
+      - ./nhanquamocnap:/app/nhanquamocnap
+      - ./nhanquaviptuan:/app/nhanquaviptuan
+      - ./new:/app/new
+      - ./chongddos:/app/chongddos
+      - ./logs:/app/logs
+    networks:
+      - nso_net
+
+volumes:
+  mariadb_data:
+  mongo_data:
+
+networks:
+  nso_net:
