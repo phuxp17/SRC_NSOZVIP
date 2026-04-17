@@ -1,6 +1,7 @@
 /logs
 /target
 .env.aapanel
+.env.vps
 *.DS_Store
 *.DS_Store?
 /config.properties
@@ -14,6 +15,7 @@
 *.class
 /.idea
 *.md
+!DEPLOY_AAPANEL.md
 *.sql
 *.txt
 /.env.aapanel.example
