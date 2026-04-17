@@ -2,13 +2,10 @@ FROM maven:3.9.9-eclipse-temurin-21 AS build
 
 WORKDIR /build
 
-COPY pom.xml mvnw mvnw.cmd ./
-COPY .mvn .mvn
+COPY pom.xml ./
 COPY src src
 
-RUN sed -i 's/\r$//' mvnw \
-    && chmod +x mvnw \
-    && MAVEN_CONFIG='' ./mvnw -q -DskipTests package
+RUN mvn -q -DskipTests package
 
 FROM eclipse-temurin:21-jre-jammy
 
