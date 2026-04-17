@@ -1,10 +1,9 @@
-name: Deploy VPS Linux
+name: CI + Deploy (VPS)
 
 on:
   push:
     branches:
       - master
-      - main
   workflow_dispatch:
 
 concurrency:
@@ -12,50 +11,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    env:
-      DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH }}
-      VPS_PORT: ${{ vars.VPS_PORT }}
-      SSH_OPTIONS: -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=~/.ssh/known_hosts
-
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Load SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+      # Optional: add unit tests here if you have them.
+      - name: Build Docker image (sanity)
+        run: docker build -t nso-app:ci .
 
-      - name: Ensure deploy path exists on VPS
+  deploy:
+    needs: ci
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 30
+    steps:
+      - name: Pull latest code on VPS
         run: |
-          mkdir -p ~/.ssh
-          ssh ${SSH_OPTIONS} -p "${VPS_PORT:-22}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "mkdir -p '${DEPLOY_PATH:-/opt/nso}'"
+          set -eu
+          cd /opt/nso
+          git checkout master
+          git pull --ff-only origin master
 
-      - name: Sync source to VPS
+      - name: Deploy with Docker Compose (VPS)
         run: |
-          rsync -az --delete \
-            --exclude '.git/' \
-            --exclude '.github/' \
-            --exclude '.idea/' \
-            --exclude 'target/' \
-            --exclude 'logs/' \
-            --exclude 'diemdanh/' \
-            --exclude 'nhanquamocnap/' \
-            --exclude 'nhanquaviptuan/' \
-            --exclude 'new/' \
-            --exclude 'chongddos/' \
-            --exclude '.env.aapanel' \
-            --exclude '.env.vps' \
-            -e "ssh ${SSH_OPTIONS} -p ${VPS_PORT:-22}" \
-            ./ "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${DEPLOY_PATH:-/opt/nso}/"
-
-      - name: Deploy with Docker Compose on VPS
-        run: |
-          ssh ${SSH_OPTIONS} -p "${VPS_PORT:-22}" "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
-            "cd '${DEPLOY_PATH:-/opt/nso}' && chmod +x scripts/deploy-vps.sh && DEPLOY_PATH='${DEPLOY_PATH:-/opt/nso}' COMPOSE_FILE='docker-compose.vps.yml' ENV_FILE='.env.vps' ./scripts/deploy-vps.sh"
+          set -eu
+          cd /opt/nso
+          chmod +x scripts/deploy-vps.sh
+          DEPLOY_PATH="/opt/nso" COMPOSE_FILE="docker-compose.vps.yml" ENV_FILE=".env.vps" ./scripts/deploy-vps.sh
